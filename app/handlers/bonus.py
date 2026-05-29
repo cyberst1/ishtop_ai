@@ -20,7 +20,7 @@ async def show_earn(message: Message) -> None:
 async def show_bonus_channels(cb: CallbackQuery) -> None:
     channels = await BonusRepo.list_enabled()
     if not channels:
-        await cb.message.answer("Hozircha bonus kanallar yo‘q.")
+        await cb.message.answer(T["bonus_no_channels"])
         await cb.answer()
         return
     await cb.message.answer(T["bonus_channels_header"],

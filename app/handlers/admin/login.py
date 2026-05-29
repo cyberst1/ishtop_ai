@@ -11,7 +11,7 @@ from app.config import settings
 from app.database.repositories import AdminLogsRepo
 from app.keyboards import admin_main_kb
 from app.locales import T
-from app.security.passwords import verify_password
+from app.security.passwords import verify_admin
 from app.security.sessions import AdminSessions
 from app.utils.logger import logger
 
@@ -43,7 +43,11 @@ async def check_password(message: Message, state: FSMContext) -> None:
     except Exception:
         pass
 
-    ok = verify_password(pwd, settings.admin_password_hash)
+    ok = verify_admin(
+        pwd,
+        hashed=settings.admin_password_hash,
+        plaintext=settings.admin_password,
+    )
     if not ok:
         await AdminLogsRepo.log(message.from_user.id, "login_wrong_password", success=False)
         logger.warning("admin.login.wrong", extra={"admin_id": message.from_user.id})

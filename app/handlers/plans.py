@@ -24,12 +24,9 @@ async def show_plans(event) -> None:
 @router.callback_query(F.data.startswith("plan:buy:"))
 async def buy_plan(cb: CallbackQuery) -> None:
     plan = cb.data.split(":", 2)[2]
-    # Real payment provider integration goes here (Click, Payme, Telegram Payments).
-    # For now we store the request and return contact info.
+    plan_label = {"premium": "Premium", "premium_plus": "Premium+"}.get(plan, plan.upper())
     await SubscriptionService.start_purchase(cb.from_user.id, plan)
-    await cb.message.answer(
-        f"💳 *{plan.upper()}* tarifini sotib olish uchun admin bilan bog‘laning: @support"
-    )
+    await cb.message.answer(T["plan_purchase_message"].format(plan=plan_label))
     await cb.answer()
 
 

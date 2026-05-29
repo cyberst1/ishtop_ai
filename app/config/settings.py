@@ -1,20 +1,31 @@
 """
 Centralized configuration via pydantic-settings.
-Loads from environment / .env. NEVER log the bot token.
+
+IMPORTANT: We load .env *manually* with interpolate=False so that the
+`$` characters inside bcrypt hashes (e.g. `$2b$12$...`) are preserved verbatim.
+If we let pydantic-settings load it via env_file=, python-dotenv would try to
+expand `$2b` as a variable and corrupt the hash.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import List, Optional
 
+from dotenv import load_dotenv
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# ---- Pre-load .env without interpolation (preserves $ in bcrypt hash) ----
+_ENV_PATH = Path(".env")
+if _ENV_PATH.exists():
+    load_dotenv(_ENV_PATH, override=False, interpolate=False)
+
 
 class Settings(BaseSettings):
+    # env_file=None → don't re-load with interpolation
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
+        env_file=None,
         case_sensitive=False,
         extra="ignore",
     )
@@ -24,10 +35,11 @@ class Settings(BaseSettings):
     bot_username: str = "ish_top_ai_bot"
 
     # ---- Admin ----
-    # Stored as a raw string ("123" or "123,456") and exposed as a list
-    # via the `admin_ids` property below.  This sidesteps pydantic-settings'
-    # JSON parsing for List[int] env values.
     admin_ids_raw: str = Field(default="", alias="ADMIN_IDS")
+    # Either of these works:
+    #   ADMIN_PASSWORD=my_plain_password         (simple, hashed at startup)
+    #   ADMIN_PASSWORD_HASH=$2b$12$...           (bcrypt hash from `.env`)
+    admin_password: str = ""
     admin_password_hash: str = ""
     admin_session_ttl_minutes: int = 30
 
@@ -40,7 +52,7 @@ class Settings(BaseSettings):
     database_path: str = "data/ish_top_ai.db"
 
     # ---- Mode ----
-    mode: str = "polling"  # polling | webhook
+    mode: str = "polling"
     webhook_url: str = ""
     webhook_secret: str = ""
     webapp_host: str = "0.0.0.0"
@@ -61,7 +73,6 @@ class Settings(BaseSettings):
     linkedin_cookie: str = ""
 
     # ---- Telegram channels parser ----
-    # Optional[int] so an empty .env value (TG_API_ID=) maps cleanly to None.
     tg_api_id: Optional[int] = None
     tg_api_hash: str = ""
 
@@ -77,6 +88,9 @@ class Settings(BaseSettings):
     premium_price: int = 9_000
     premium_plus_price: int = 19_990
 
+    # ---- Branding / Support ----
+    support_username: str = "cybst_academy"
+
     # -------------------- validators --------------------
 
     @field_validator("tg_api_id", mode="before")
@@ -86,8 +100,6 @@ class Settings(BaseSettings):
             return None
         return v
 
-    # Generic: any int field that receives an empty string from .env
-    # should fall back to the field's default value.
     @field_validator(
         "admin_session_ttl_minutes", "rate_limit_per_min",
         "webapp_port", "parser_timeout", "parser_concurrency",
@@ -130,4 +142,4 @@ class Settings(BaseSettings):
         return p
 
 
-settings = Settings()  # raises if BOT_TOKEN is missing
+settings = Settings()

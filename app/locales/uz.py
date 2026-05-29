@@ -1,26 +1,38 @@
-"""All Uzbek user-facing strings live here. Bot uses ONLY this dict."""
+"""All Uzbek user-facing strings. Bot uses ONLY this dict."""
 from __future__ import annotations
+
+SUPPORT = "@cybst_academy"
 
 T = {
     # ---------- General ----------
     "app_name": "ISH TOP AI",
+    "support": SUPPORT,
     "loading": "⏳ Yuklanmoqda...",
-    "error_generic": "⚠️ Xatolik yuz berdi. Birozdan keyin urinib ko‘ring.",
-    "blocked": "🚫 Sizning hisobingiz bloklangan. Admin bilan bog‘laning.",
-    "rate_limited": "⏱ Juda tez yubormoqdasiz. Biroz kuting.",
+    "error_generic": (
+        "⚠️ Xatolik yuz berdi. Birozdan keyin urinib ko'ring.\n"
+        f"Yordam: {SUPPORT}"
+    ),
+    "blocked": (
+        "🚫 Sizning hisobingiz bloklangan.\n"
+        f"Admin bilan bog'laning: {SUPPORT}"
+    ),
+    "rate_limited": "⏱ Juda tez yubormoqdasiz. Biroz kuting va qayta urinib ko'ring.",
     "back": "⬅️ Orqaga",
     "cancel": "❌ Bekor qilish",
     "yes": "✅ Ha",
-    "no": "❌ Yo‘q",
+    "no": "❌ Yo'q",
 
     # ---------- /start ----------
     "start_welcome": (
-        "👋 *ISH TOP AI*\n\n"
-        "🇺🇿 O‘zbekistondagi barcha ish platformalaridan AI orqali ish yoki "
-        "xodim topib beradi.\n\n"
-        "🪙 *Har bir e'lon ochish:* 2 coin\n\n"
-        "🎁 Sizga *4 coin* BEPUL berildi.\n"
-        "(2 ta e'lon ochish uchun)"
+        "👋 *ISH TOP AI*ga xush kelibsiz!\n\n"
+        "🇺🇿 O'zbekiston bo'ylab eng yaxshi ish va xodim topish AI yordamchisi.\n\n"
+        "Bot 6 ta katta platformadan vakansiyalarni yig'adi:\n"
+        "• HH.uz  • OLX.uz  • LinkedIn\n"
+        "• Indeed  • Jooble  • Telegram kanallari\n\n"
+        "🪙 *Har bir e'lonni ochish:* 2 coin\n\n"
+        "🎁 *Sovg'a:* sizga *4 coin* BEPUL berildi\n"
+        "(2 ta e'lon ochish uchun yetadi)\n\n"
+        f"📩 Yordam kerakmi? {SUPPORT}"
     ),
 
     # ---------- Main menu ----------
@@ -32,7 +44,10 @@ T = {
     "btn_advisor": "🧠 AI Career Advisor",
 
     # ---------- Search flow ----------
-    "search_who_are_you": "🧠 Siz kimsiz?",
+    "search_who_are_you": (
+        "🧠 *Siz kimsiz?*\n\n"
+        "Quyidagilardan birini tanlang:"
+    ),
     "btn_role_jobseeker": "👨‍💻 Ish qidiryapman",
     "btn_role_employer": "🏢 Ish beruvchiman",
     "search_query_prompt": (
@@ -41,17 +56,29 @@ T = {
         "• Python dasturchi\n"
         "• Grafik dizayner\n"
         "• SMM manager\n"
-        "• Remote frontend developer"
+        "• Remote frontend developer\n"
+        "• Toshkentda kuryer\n"
+        "• Buxgalter junior\n\n"
+        "Iltimos, faqat *ish/kasb* bilan bog'liq yozing."
     ),
-    "search_searching": "🔎 AI yordamida qidirilmoqda...",
-    "search_no_results": "😔 Hech narsa topilmadi. Boshqacha so‘rov bilan urinib ko‘ring.",
+    "search_searching": "🔎 *AI yordamida 6 ta platformadan qidirilmoqda...*",
+    "search_no_results": (
+        "😔 *Hech narsa topilmadi.*\n\n"
+        "• Boshqacha so'rov bilan urinib ko'ring\n"
+        "• Yoki kalit so'zni o'zgartiring\n\n"
+        f"Yordam: {SUPPORT}"
+    ),
     "search_daily_limit": (
         "📵 *Kunlik limit tugadi.*\n\n"
-        "Free tarifda kuniga {limit} ta qidiruv. Premium oling — cheksiz qidiruv."
+        "Free tarifda kuniga *{limit} ta* qidiruv.\n"
+        "⭐ *Premium* oling — cheksiz qidiruv!\n\n"
+        f"Sotib olish: {SUPPORT}"
     ),
     "search_off_topic": (
         "🤖 *ISH TOP AI* faqat *ish, karyera, kasb* mavzularida yordam beradi.\n\n"
-        "Hazil, suhbat yoki boshqa mavzular qabul qilinmaydi."
+        "❌ Hazil, suhbat, savol-javob — qabul qilinmaydi.\n\n"
+        "✅ Misol: «Python dasturchi», «SMM manager», «Toshkentda kuryer»\n\n"
+        f"Boshqa savolingiz bo'lsa: {SUPPORT}"
     ),
 
     # ---------- Job card ----------
@@ -69,91 +96,126 @@ T = {
         "🪙 *Coin yetarli emas.*\n\n"
         "Sizda: *{balance}* coin\n"
         "Kerak: *2* coin\n\n"
-        "Coin ishlash uchun «🪙 Coin ishlash» bo‘limiga kiring."
+        "Coin ishlash uchun «🪙 Coin ishlash» bo'limiga kiring."
     ),
-    "job_unlocked": "✅ E'lon ochildi!",
-    "job_saved": "❤️ Saqlandi!",
+    "job_unlocked": "✅ E'lon ochildi! Aloqa va havola pastda 👇",
+    "job_saved": "❤️ Saqlandi! «❤️ Saqlangan» bo'limidan ko'rsangiz bo'ladi.",
 
     # ---------- Profile ----------
     "profile_card": (
         "👤 *Sizning profilingiz*\n\n"
-        "🪙 Coin: *{balance}*\n"
-        "⭐ Tarif: *{plan}*\n"
-        "📅 Bugungi qidiruvlar: *{searches_today}*\n"
-        "👥 Referrallar: *{referrals}*\n"
-        "❤️ Saqlangan: *{saved}*"
+        "🪙 *Coin balansi:* {balance}\n"
+        "⭐ *Tarif:* {plan}\n"
+        "📅 *Bugungi qidiruvlar:* {searches_today}\n"
+        "👥 *Referrallar:* {referrals}\n"
+        "❤️ *Saqlangan e'lonlar:* {saved}"
     ),
 
     # ---------- Plans ----------
-    "plans_header": "⭐ *Tariflar*",
+    "plans_header": (
+        "⭐ *Tariflar*\n\n"
+        "Quyidagi tariflardan birini tanlang:"
+    ),
     "plan_free": (
-        "*FREE — 0 so‘m*\n"
-        "• AI ish qidiruvi\n"
-        "• Coin orqali ochish\n"
-        "• Kuniga 3 ta qidiruv"
+        "🆓 *FREE — 0 so'm*\n"
+        "  ✅ AI ish qidiruvi\n"
+        "  ✅ Coin orqali e'lon ochish\n"
+        "  ✅ Kuniga 3 ta qidiruv"
     ),
     "plan_premium": (
-        "*PREMIUM — 9 000 so‘m*\n"
-        "• Cheksiz qidiruv\n"
-        "• AI search\n"
-        "• Coin ochish"
+        "⭐ *PREMIUM — 9 000 so'm/oy*\n"
+        "  ✅ Cheksiz qidiruv\n"
+        "  ✅ AI search\n"
+        "  ✅ Coin ochish"
     ),
     "plan_premium_plus": (
-        "*PREMIUM+ — 19 990 so‘m*\n"
-        "• Cheksiz qidiruv\n"
-        "• AI search\n"
-        "• Coin ochish\n"
-        "• AI Career Advisor"
+        "💎 *PREMIUM+ — 19 990 so'm/oy*\n"
+        "  ✅ Cheksiz qidiruv\n"
+        "  ✅ AI search\n"
+        "  ✅ Coin ochish\n"
+        "  ✅ AI Career Advisor"
     ),
     "btn_buy_premium": "💳 Premium sotib olish",
     "btn_buy_premium_plus": "💎 Premium+ sotib olish",
+    "plan_purchase_message": (
+        "💳 *{plan}* tarifini sotib olish uchun admin bilan bog'laning:\n\n"
+        f"📩 {SUPPORT}\n\n"
+        "Karta orqali to'lov qilingach, tarif darhol faollashtiriladi."
+    ),
 
     # ---------- Earn / Bonus ----------
     "earn_header": (
         "🪙 *Coin ishlash usullari*\n\n"
-        "1. 👥 Do‘st taklif qilish\n"
-        "2. 🎁 Bonus kanallarga qo‘shilish"
+        "1. 👥 Do'st taklif qilish — *2 coin* (1-do'st), keyingi har biri *1 coin*\n"
+        "2. 🎁 Bonus kanallarga qo'shilish — har biri *0.5 coin*"
     ),
-    "btn_invite": "👥 Do‘st taklif qilish",
+    "btn_invite": "👥 Do'st taklif qilish",
     "btn_bonus_channels": "🎁 Bonus kanallar",
     "invite_card": (
-        "👥 *Do‘st taklif qilish*\n\n"
-        "🎁 1-do‘st: *+2 coin*\n"
-        "🎁 Keyingi har biri: *+1 coin*\n\n"
-        "Sizning havolangiz:\n`{link}`\n\n"
-        "Taklif qilingan: *{count}* kishi"
+        "👥 *Do'stlaringizni taklif qiling*\n\n"
+        "🎁 1-do'st uchun: *+2 coin*\n"
+        "🎁 Keyingi har biri uchun: *+1 coin*\n\n"
+        "📲 *Sizning taklif havolangiz:*\n"
+        "`{link}`\n\n"
+        "Yoki shu xabarni ulashing 👆\n\n"
+        "👥 Hozirgacha taklif qilingan: *{count}* kishi"
     ),
-    "bonus_channels_header": "🎁 *Bonus kanallar* — har biri uchun *+0.5 coin*",
-    "bonus_join_btn": "🔗 Qo‘shilish",
+    "bonus_channels_header": (
+        "🎁 *Bonus kanallar*\n\n"
+        "Har bir kanalga qo'shilsangiz *+0.5 coin* olasiz.\n"
+        "Kanalga qo'shilgach «✅ Tekshirish» tugmasini bosing."
+    ),
+    "bonus_join_btn": "🔗 Qo'shilish",
     "bonus_check_btn": "✅ Tekshirish",
     "bonus_already_claimed": "Bu kanal uchun bonus allaqachon olingan.",
-    "bonus_not_subscribed": "❌ Hali kanalga qo‘shilmagansiz.",
-    "bonus_rewarded": "🎉 +0.5 coin qo‘shildi!",
+    "bonus_not_subscribed": "❌ Hali kanalga qo'shilmagansiz.",
+    "bonus_rewarded": "🎉 +0.5 coin qo'shildi!",
+    "bonus_no_channels": (
+        "Hozircha bonus kanallar mavjud emas.\n"
+        "Qaytib keling — yaqinda qo'shamiz!"
+    ),
 
     # ---------- Help ----------
     "help_text": (
-        "ℹ️ *Yordam*\n\n"
-        "🔍 *Ish qidirish* — AI yordamida vakansiyalar\n"
-        "🪙 *Coin ishlash* — referral va bonus kanallar\n"
-        "⭐ *Tariflar* — Free / Premium / Premium+\n"
-        "👤 *Profil* — balans, tarif, statistika\n\n"
-        "Savol bo‘lsa: @support"
+        "ℹ️ *ISH TOP AI — qisqa qo'llanma*\n\n"
+        "🔍 *Ish qidirish*\n"
+        "AI yordamida 6 ta platformadan vakansiyalar yig'iladi.\n"
+        "Faqat ish/kasb mavzusida so'rang!\n\n"
+        "🪙 *Coin ishlash*\n"
+        "  • Do'st taklif qilish: *+2 coin* (1-do'st), *+1 coin* (keyingilari)\n"
+        "  • Bonus kanal: *+0.5 coin*\n\n"
+        "⭐ *Tariflar*\n"
+        "  • Free — kuniga 3 qidiruv\n"
+        "  • Premium — cheksiz qidiruv\n"
+        "  • Premium+ — cheksiz + AI Career Advisor\n\n"
+        "👤 *Profil*\n"
+        "Balans, tarif, statistikani ko'ring.\n\n"
+        "📞 *Aloqa*\n"
+        f"Savol/taklif bo'lsa: {SUPPORT}"
     ),
 
     # ---------- Advisor ----------
     "advisor_only_premium_plus": (
         "💎 *AI Career Advisor* faqat *Premium+* foydalanuvchilar uchun.\n\n"
-        "⭐ Tariflar bo‘limiga o‘tib obunani faollashtiring."
+        "⭐ *Tariflar* bo'limidan obunani faollashtiring.\n\n"
+        f"Yordam: {SUPPORT}"
     ),
     "advisor_prompt": (
         "🧠 *AI Career Advisor*\n\n"
-        "Karyera, ko‘nikma, roadmap, maosh, intervyu yoki freelancing haqida so‘rang."
+        "Karyera, ko'nikma, roadmap, maosh, intervyu yoki freelancing haqida so'rang.\n\n"
+        "Misol:\n"
+        "• «Backend developer bo'lish uchun nima o'rganay?»\n"
+        "• «Junior frontend maoshi qancha?»\n"
+        "• «Texnik intervyuga qanday tayyorgarlik ko'ray?»"
     ),
 
     # ---------- Admin ----------
-    "admin_not_allowed": "⛔ Sizda admin huquqi yo‘q.",
-    "admin_password_prompt": "🔐 Admin paroli kiriting:",
-    "admin_password_wrong": "❌ Parol noto‘g‘ri.",
+    "admin_not_allowed": "⛔ Sizda admin huquqi yo'q.",
+    "admin_password_prompt": (
+        "🔐 *Admin paroli kiriting:*\n\n"
+        "(Parol darhol o'chiriladi)"
+    ),
+    "admin_password_wrong": "❌ Parol noto'g'ri. Qayta urinib ko'ring yoki /admin_kirish ni qayta yuboring.",
     "admin_login_ok": "✅ Admin panelga xush kelibsiz.",
     "admin_session_expired": "⏰ Admin sessiyasi tugadi. Qayta kiring: /admin_kirish",
     "admin_panel_title": "🎛 *Admin panel*",

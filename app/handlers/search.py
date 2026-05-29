@@ -15,6 +15,7 @@ from app.services.coin_economy import CoinEconomy
 from app.services.job_renderer import render_job_card
 from app.services.search_aggregator import SearchAggregator
 from app.services.subscriptions import SubscriptionService
+from app.ai.intent_guard import IntentGuard
 from app.utils.logger import logger
 
 router = Router(name="search")
@@ -51,6 +52,15 @@ async def do_search(message: Message, state: FSMContext) -> None:
     query = sanitize_query(raw)
     if not query:
         await message.answer(T["search_off_topic"])
+        return
+
+    # Intent guard — reject jokes, chatter, off-topic, etc.
+    verdict = await IntentGuard.check(query)
+    if not verdict.allowed:
+        await message.answer(T["search_off_topic"])
+        logger.info("search.rejected_off_topic",
+                    extra={"user_id": user_id, "reason": verdict.reason,
+                           "query": query[:80]})
         return
 
     data = await state.get_data()
