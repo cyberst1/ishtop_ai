@@ -5,6 +5,7 @@ import time
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message, TelegramObject, Update
 
 from app.locales import T
@@ -32,18 +33,39 @@ class LoggingMiddleware(BaseMiddleware):
                 },
             )
             return result
-        except Exception as e:
-            logger.exception("update.error", extra={"user_id": getattr(user, "id", None)})
-            inner = None
-            if isinstance(event, Update):
-                inner = event.message or event.callback_query
-            elif isinstance(event, (Message, CallbackQuery)):
-                inner = event
+        except TelegramBadRequest as e:
+            # Most common: "can't parse entities" — retry as plain text
+            logger.warning(
+                "update.parse_error",
+                extra={"user_id": getattr(user, "id", None), "err": str(e)[:200]},
+            )
+            inner = _inner(event)
             try:
                 if isinstance(inner, Message):
-                    await inner.answer(T["error_generic"])
+                    await inner.answer(T["error_generic"], parse_mode=None)
+                elif isinstance(inner, CallbackQuery):
+                    await inner.answer(
+                        "⚠️ Xatolik. Qaytadan urinib ko'ring.", show_alert=True
+                    )
+            except Exception:
+                pass
+            return None
+        except Exception:
+            logger.exception("update.error", extra={"user_id": getattr(user, "id", None)})
+            inner = _inner(event)
+            try:
+                if isinstance(inner, Message):
+                    await inner.answer(T["error_generic"], parse_mode=None)
                 elif isinstance(inner, CallbackQuery):
                     await inner.answer(T["error_generic"], show_alert=True)
             except Exception:
                 pass
             return None
+
+
+def _inner(event: TelegramObject):
+    if isinstance(event, Update):
+        return event.message or event.callback_query
+    if isinstance(event, (Message, CallbackQuery)):
+        return event
+    return None

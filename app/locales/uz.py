@@ -1,7 +1,14 @@
 """All Uzbek user-facing strings. Bot uses ONLY this dict."""
 from __future__ import annotations
 
-SUPPORT = "@cybst_academy"
+# `_` in @cybst_academy must be escaped in legacy Markdown, otherwise Telegram
+# treats it as the start of an italic span and rejects the message with
+# `Bad Request: can't parse entities`.
+# We render it as a clickable Markdown link — the visible underscore is escaped
+# inside the link text, the URL stays intact.
+SUPPORT_PLAIN = "@cybst_academy"
+SUPPORT_URL = "https://t.me/cybst_academy"
+SUPPORT = f"[@cybst\\_academy]({SUPPORT_URL})"
 
 T = {
     # ---------- General ----------
@@ -238,9 +245,9 @@ T = {
         "🔐 *Admin paroli kiriting:*\n\n"
         "(Parol darhol o'chiriladi)"
     ),
-    "admin_password_wrong": "❌ Parol noto'g'ri. Qayta urinib ko'ring yoki /admin_kirish ni qayta yuboring.",
+    "admin_password_wrong": "❌ Parol noto'g'ri. Qayta urinib ko'ring yoki `/admin_kirish` ni qayta yuboring.",
     "admin_login_ok": "✅ Admin panelga xush kelibsiz.",
-    "admin_session_expired": "⏰ Admin sessiyasi tugadi. Qayta kiring: /admin_kirish",
+    "admin_session_expired": "⏰ Admin sessiyasi tugadi. Qayta kiring: `/admin_kirish`",
     "admin_panel_title": "🎛 *Admin panel*",
     "btn_admin_users": "👥 Userlar",
     "btn_admin_blocks": "🚫 Block System",
