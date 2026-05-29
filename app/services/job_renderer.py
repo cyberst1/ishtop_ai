@@ -1,11 +1,11 @@
 """
 Premium job-card formatting.
 
-User-requested format:
+User-requested format (everything visible — contacts FREE):
   ELON NOMI       — title
   QAYERDAN OLINGAN — source (HH.uz, OLX, LinkedIn, ...)
   XAQIDA          — short description
-  BOG'LANISH      — contact / link (hidden until unlocked)
+  BOG'LANISH      — contact / link (always visible — free)
   AI MASLAHATI    — short AI tip
 """
 from __future__ import annotations
@@ -32,7 +32,6 @@ def _source_label(src: str) -> str:
 def _short_desc(job: dict, limit: int = 220) -> str:
     text = (job.get("description") or "").strip()
     if not text:
-        # build a 1-line fallback from company / location / salary
         bits = [job.get("company"), job.get("location"), job.get("salary")]
         text = " · ".join(b for b in bits if b)
     return truncate(text, limit) or "—"
@@ -67,52 +66,41 @@ def _ai_tip(job: dict) -> str:
     return "  ·  ".join(tips)
 
 
-def render_job_card(job: dict, *, balance: float, locked: bool = True) -> tuple[str, bool]:
+def _contact_block(job: dict) -> str:
+    url = (job.get("url") or "").strip()
+    contact = (job.get("contact") or "").strip()
+    lines = []
+    if url:
+        lines.append(f"[🔗 Havola]({url})")
+    if contact and contact != url:
+        lines.append(f"📞 {md_escape(contact)}")
+    if not lines:
+        lines.append("—")
+    return "\n".join(lines)
+
+
+def render_job_card(job: dict, *, balance: float = 0.0, locked: bool = False
+                    ) -> tuple[str, bool]:
     """
-    Returns (text, locked).
+    Always renders a fully visible card.  Contact info is FREE — search itself
+    costs the coins (handled in the search handler).
 
-    Layout (mobile-friendly, premium look):
-
-        ━━━━━━━━━━━━━━━━━━━━━━━━
-        💼  *ELON NOMI*
-        Python Backend Developer
-
-        🏷  *QAYERDAN OLINGAN*
-        HH.uz
-
-        📝  *XAQIDA*
-        ...short description...
-
-        📞  *BOG'LANISH*
-        🔒 Ochish narxi: 2 coin    (or contact when unlocked)
-
-        🧠  *AI MASLAHATI*
-        ...one-line tip...
-        ━━━━━━━━━━━━━━━━━━━━━━━━
+    Signature keeps `balance` and `locked` parameters for backward compatibility
+    with old callers, but `locked` is ignored (always False now).
     """
     title = md_escape(job.get("title") or "—")
     source = md_escape(_source_label(job.get("source") or ""))
     desc = md_escape(_short_desc(job))
     tip = md_escape(_ai_tip(job))
-
-    if locked:
-        contact_line = (
-            f"🔒 Ochish narxi: *2 coin*\n"
-            f"💳 Balansingiz: *{round(balance, 2)}* coin\n"
-            f"⬇️  Tugmani bosing: «🔓 Ochish (2 coin)»"
-        )
-    else:
-        url = job.get("url") or ""
-        contact = job.get("contact") or url
-        contact_line = f"[🔗 Havola]({url})\n📞 {md_escape(contact)}"
+    contact_block = _contact_block(job)
 
     body = (
         f"{DIVIDER}\n"
         f"💼  *ELON NOMI*\n{title}\n\n"
         f"🏷  *QAYERDAN OLINGAN*\n{source}\n\n"
         f"📝  *XAQIDA*\n{desc}\n\n"
-        f"📞  *BOG'LANISH*\n{contact_line}\n\n"
+        f"📞  *BOG'LANISH*\n{contact_block}\n\n"
         f"🧠  *AI MASLAHATI*\n{tip}\n"
         f"{DIVIDER}"
     )
-    return body, locked
+    return body, False  # never locked

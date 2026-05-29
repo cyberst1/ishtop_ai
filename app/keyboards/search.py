@@ -11,16 +11,8 @@ def role_kb() -> InlineKeyboardMarkup:
 
 
 def job_card_kb(job_id: str, locked: bool = False) -> InlineKeyboardMarkup:
-    if locked:
-        return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=T["btn_job_unlock"], callback_data=f"unlock:{job_id}")],
-            [InlineKeyboardButton(text=T["btn_job_next"], callback_data="job:next")],
-        ])
+    """All cards are unlocked now — `locked` parameter kept for back-compat."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=T["btn_job_details"], callback_data=f"job:details:{job_id}"),
-            InlineKeyboardButton(text=T["btn_job_contact"], callback_data=f"job:contact:{job_id}"),
-        ],
         [
             InlineKeyboardButton(text=T["btn_job_save"], callback_data=f"job:save:{job_id}"),
             InlineKeyboardButton(text=T["btn_job_next"], callback_data="job:next"),

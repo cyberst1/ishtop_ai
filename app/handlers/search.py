@@ -1,13 +1,22 @@
-"""Search flow: role → query → AI parse → aggregate → render premium cards."""
+"""
+Search flow:
+    role  →  query  →  IntentGuard  →  pre-check balance
+                                     →  aggregate from 6 parsers
+                                     →  charge 2 coin (only if results found)
+                                     →  show all cards (contacts FREE)
+
+Premium / Premium+ users: no daily limit, no coin charge for searches.
+"""
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from app.ai.intent_guard import IntentGuard
 from app.bot.states import SearchSG
 from app.config import settings
-from app.database.repositories import JobsRepo, SearchesRepo, UsersRepo
+from app.database.repositories import JobsRepo, SearchesRepo
 from app.keyboards import job_card_kb, role_kb
 from app.locales import T
 from app.security.sanitizer import sanitize_query
@@ -15,14 +24,16 @@ from app.services.coin_economy import CoinEconomy
 from app.services.job_renderer import render_job_card
 from app.services.search_aggregator import SearchAggregator
 from app.services.subscriptions import SubscriptionService
-from app.ai.intent_guard import IntentGuard
 from app.utils.logger import logger
 
 router = Router(name="search")
 
 
+# ─────────────────────────────────────── entry ─────
+
 @router.message(F.text == T["btn_search"])
 async def open_search(message: Message, state: FSMContext) -> None:
+    await state.clear()
     await state.set_state(SearchSG.role)
     await message.answer(T["search_who_are_you"], reply_markup=role_kb())
 
@@ -36,77 +47,132 @@ async def pick_role(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()
 
 
+# ─────────────────────────────────────── search ─────
+
 @router.message(SearchSG.query, F.text)
 async def do_search(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
+    is_premium = await SubscriptionService.is_premium(user_id)
 
-    # 1. Daily-limit check for free plan
-    if not await SubscriptionService.is_premium(user_id):
+    # 1. Daily limit (free plan only)
+    if not is_premium:
         used = await SearchesRepo.count_today(user_id)
         if used >= settings.free_daily_searches:
-            await message.answer(T["search_daily_limit"].format(limit=settings.free_daily_searches))
+            await message.answer(
+                T["search_daily_limit"].format(limit=settings.free_daily_searches)
+            )
             await state.clear()
             return
 
-    raw = message.text or ""
-    query = sanitize_query(raw)
+    # 2. Sanitize input
+    query = sanitize_query(message.text or "")
     if not query:
         await message.answer(T["search_off_topic"])
         return
 
-    # Intent guard — reject jokes, chatter, off-topic, etc.
+    # 3. Intent guard — only career-related queries
     verdict = await IntentGuard.check(query)
     if not verdict.allowed:
         await message.answer(T["search_off_topic"])
-        logger.info("search.rejected_off_topic",
-                    extra={"user_id": user_id, "reason": verdict.reason,
-                           "query": query[:80]})
+        logger.info(
+            "search.rejected_off_topic",
+            extra={"user_id": user_id, "reason": verdict.reason, "query": query[:80]},
+        )
         return
+
+    # 4. Pre-check balance for free users (we charge AFTER results are found,
+    #    but we want to give a clear message upfront if balance is too low)
+    if not is_premium:
+        balance = await CoinEconomy.balance(user_id)
+        if balance < settings.search_cost:
+            await message.answer(
+                T["search_insufficient_coins"].format(
+                    balance=round(balance, 2), cost=settings.search_cost
+                )
+            )
+            await state.clear()
+            return
 
     data = await state.get_data()
     role = data.get("role", "jobseeker")
 
+    # 5. Run the parsers
     await message.answer(T["search_searching"])
-
     aggregator = SearchAggregator()
     jobs, keywords = await aggregator.search(query, role=role)
 
     await SearchesRepo.log(user_id, query, role, ",".join(keywords), len(jobs))
-    logger.info("search.done", extra={"user_id": user_id, "n": len(jobs), "kw": keywords})
+    logger.info(
+        "search.done",
+        extra={"user_id": user_id, "n": len(jobs), "kw": keywords[:5]},
+    )
 
+    # 6. No results → no charge, no daily-limit increment beyond what was logged
     if not jobs:
         await message.answer(T["search_no_results"])
         await state.clear()
         return
 
-    # Persist + queue jobs in FSM
+    # 7. Charge 2 coin (free users only) — atomic spend with audit ledger
+    if not is_premium:
+        ok, new_balance = await CoinEconomy.spend(
+            user_id,
+            settings.search_cost,
+            reason="search",
+            related_id=query[:40],
+        )
+        if not ok:
+            # Race: balance dropped between pre-check and now.
+            await message.answer(
+                T["search_insufficient_coins"].format(
+                    balance=round(new_balance, 2), cost=settings.search_cost
+                )
+            )
+            await state.clear()
+            return
+        await message.answer(
+            T["search_charged"].format(
+                cost=settings.search_cost,
+                balance=round(new_balance, 2),
+                count=len(jobs),
+            )
+        )
+
+    # 8. Persist & start browsing
     await JobsRepo.upsert_many(jobs)
     await state.update_data(jobs=[j["id"] for j in jobs], idx=0)
     await state.set_state(SearchSG.browsing)
     await _show_current(message, state)
 
 
+# ─────────────────────────────────────── browsing ─────
+
 async def _show_current(target, state: FSMContext) -> None:
     data = await state.get_data()
     ids = data.get("jobs", [])
     idx = data.get("idx", 0)
+
     if idx >= len(ids):
-        await target.answer("✅ Hammasini ko‘rdingiz.")
+        msg = T["search_all_seen"]
+        if isinstance(target, Message):
+            await target.answer(msg)
+        else:
+            await target.message.answer(msg)
         await state.clear()
         return
+
     job = await JobsRepo.get(ids[idx])
     if job is None:
         await state.update_data(idx=idx + 1)
         await _show_current(target, state)
         return
 
-    user_id = (target.from_user.id if isinstance(target, Message) else target.message.chat.id)
-    balance = await CoinEconomy.balance(user_id)
-    text, locked = render_job_card(dict(job), balance=balance, locked=True)
+    text, _ = render_job_card(dict(job))
+    kb = job_card_kb(job["id"])
     if isinstance(target, Message):
-        await target.answer(text, reply_markup=job_card_kb(job["id"], locked=locked))
+        await target.answer(text, reply_markup=kb, disable_web_page_preview=True)
     else:
-        await target.message.answer(text, reply_markup=job_card_kb(job["id"], locked=locked))
+        await target.message.answer(text, reply_markup=kb, disable_web_page_preview=True)
 
 
 @router.callback_query(F.data == "job:next")
@@ -124,52 +190,11 @@ async def cancel_search(cb: CallbackQuery, state: FSMContext) -> None:
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("unlock:"))
-async def unlock_job(cb: CallbackQuery) -> None:
-    job_id = cb.data.split(":", 1)[1]
-    user_id = cb.from_user.id
-    ok, balance = await CoinEconomy.spend(user_id, settings.job_unlock_cost,
-                                          reason="job_unlock", related_id=job_id)
-    if not ok:
-        await cb.answer(T["job_insufficient_coins"].format(balance=balance), show_alert=True)
-        return
-    job = await JobsRepo.get(job_id)
-    if job is None:
-        await cb.answer(T["error_generic"], show_alert=True)
-        return
-    text, _ = render_job_card(dict(job), balance=balance, locked=False)
-    await cb.message.edit_text(text, reply_markup=job_card_kb(job_id, locked=False))
-    await cb.answer(T["job_unlocked"])
-
-
 @router.callback_query(F.data.startswith("job:save:"))
 async def save_job(cb: CallbackQuery) -> None:
     job_id = cb.data.split(":", 2)[2]
     await JobsRepo.save_for_user(cb.from_user.id, job_id)
-    await cb.answer(T["job_saved"])
-
-
-@router.callback_query(F.data.startswith("job:contact:"))
-async def show_contact(cb: CallbackQuery) -> None:
-    job_id = cb.data.split(":", 2)[2]
-    job = await JobsRepo.get(job_id)
-    if job is None:
-        await cb.answer(T["error_generic"], show_alert=True)
-        return
-    contact = job["contact"] or job["url"]
-    await cb.answer(f"📞 {contact}", show_alert=True)
-
-
-@router.callback_query(F.data.startswith("job:details:"))
-async def show_details(cb: CallbackQuery) -> None:
-    job_id = cb.data.split(":", 2)[2]
-    job = await JobsRepo.get(job_id)
-    if job is None:
-        await cb.answer(T["error_generic"], show_alert=True)
-        return
-    desc = (job["description"] or "")[:1500]
-    await cb.message.answer(f"📄 *{job['title']}*\n\n{desc}\n\n🔗 {job['url']}")
-    await cb.answer()
+    await cb.answer(T["job_saved"], show_alert=False)
 
 
 def register(dp: Dispatcher) -> None:

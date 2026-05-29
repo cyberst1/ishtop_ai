@@ -29,9 +29,15 @@ T = {
         "Bot 6 ta katta platformadan vakansiyalarni yig'adi:\n"
         "• HH.uz  • OLX.uz  • LinkedIn\n"
         "• Indeed  • Jooble  • Telegram kanallari\n\n"
-        "🪙 *Har bir e'lonni ochish:* 2 coin\n\n"
+        "💡 *Qanday ishlaydi?*\n"
+        "1️⃣ «🔍 Ish qidirish» tugmasini bosasiz\n"
+        "2️⃣ Qanday ish izlayotganingizni yozasiz\n"
+        "3️⃣ AI 6 ta saytdan e'lonlarni yig'adi\n"
+        "4️⃣ Bog'lanish ma'lumotlari *bepul* ko'rinadi 📞\n\n"
+        "🪙 *Narx:* har bir qidiruv = *2 coin*\n"
+        "(natija topilmasa coin yechilmaydi)\n\n"
         "🎁 *Sovg'a:* sizga *4 coin* BEPUL berildi\n"
-        "(2 ta e'lon ochish uchun yetadi)\n\n"
+        "(2 ta qidiruv qilishingiz uchun yetadi)\n\n"
         f"📩 Yordam kerakmi? {SUPPORT}"
     ),
 
@@ -59,19 +65,26 @@ T = {
         "• Remote frontend developer\n"
         "• Toshkentda kuryer\n"
         "• Buxgalter junior\n\n"
+        "🪙 Har bir qidiruv: *2 coin* (natija topilsa)\n"
+        "📞 Bog'lanish ma'lumotlari *bepul* ko'rinadi.\n\n"
         "Iltimos, faqat *ish/kasb* bilan bog'liq yozing."
     ),
     "search_searching": "🔎 *AI yordamida 6 ta platformadan qidirilmoqda...*",
+    "search_charged": (
+        "🪙 *{cost} coin yechildi.* Topildi: *{count} ta* e'lon.\n"
+        "💳 Yangi balans: *{balance}* coin"
+    ),
     "search_no_results": (
         "😔 *Hech narsa topilmadi.*\n\n"
-        "• Boshqacha so'rov bilan urinib ko'ring\n"
-        "• Yoki kalit so'zni o'zgartiring\n\n"
+        "Coin yechilmadi. Boshqacha so'rov bilan urinib ko'ring:\n"
+        "• Boshqa kalit so'z\n"
+        "• Yoki kasbingizni boshqacha ifodalang\n\n"
         f"Yordam: {SUPPORT}"
     ),
     "search_daily_limit": (
         "📵 *Kunlik limit tugadi.*\n\n"
         "Free tarifda kuniga *{limit} ta* qidiruv.\n"
-        "⭐ *Premium* oling — cheksiz qidiruv!\n\n"
+        "⭐ *Premium* oling — cheksiz qidiruv va coinsiz!\n\n"
         f"Sotib olish: {SUPPORT}"
     ),
     "search_off_topic": (
@@ -80,26 +93,32 @@ T = {
         "✅ Misol: «Python dasturchi», «SMM manager», «Toshkentda kuryer»\n\n"
         f"Boshqa savolingiz bo'lsa: {SUPPORT}"
     ),
-
-    # ---------- Job card ----------
-    "btn_job_details": "📄 Batafsil",
-    "btn_job_contact": "📞 Aloqa",
-    "btn_job_save": "❤️ Saqlash",
-    "btn_job_next": "⏭ Keyingi",
-    "btn_job_unlock": "🔓 Ochish (2 coin)",
-    "job_locked_preview": (
-        "🔒 *E'lon yopiq*\n\n"
-        "Ushbu e'lonni ochish uchun *2 coin* sarflanadi.\n"
-        "Balansingiz: *{balance}* coin"
-    ),
-    "job_insufficient_coins": (
+    "search_insufficient_coins": (
         "🪙 *Coin yetarli emas.*\n\n"
         "Sizda: *{balance}* coin\n"
-        "Kerak: *2* coin\n\n"
-        "Coin ishlash uchun «🪙 Coin ishlash» bo'limiga kiring."
+        "Kerak: *{cost}* coin (har qidiruv uchun)\n\n"
+        "💡 Coin ishlash usullari:\n"
+        "• 👥 Do'st taklif qilish (+2 coin / +1 coin)\n"
+        "• 🎁 Bonus kanallar (+0.5 coin)\n"
+        "• ⭐ Premium tarif olish (cheksiz qidiruv)\n\n"
+        "«🪙 Coin ishlash» bo'limiga kiring."
     ),
-    "job_unlocked": "✅ E'lon ochildi! Aloqa va havola pastda 👇",
-    "job_saved": "❤️ Saqlandi! «❤️ Saqlangan» bo'limidan ko'rsangiz bo'ladi.",
+    "search_all_seen": (
+        "✅ *Barcha topilgan e'lonlarni ko'rdingiz.*\n\n"
+        "Yangi qidiruv qilish uchun «🔍 Ish qidirish» ni bosing."
+    ),
+
+    # ---------- Job card ----------
+    "btn_job_save": "❤️ Saqlash",
+    "btn_job_next": "⏭ Keyingi",
+    # Legacy keys (kept so any external reference doesn't break)
+    "btn_job_details": "📄 Batafsil",
+    "btn_job_contact": "📞 Aloqa",
+    "btn_job_unlock": "🔓 Ochish",
+    "job_locked_preview": "",
+    "job_insufficient_coins": "",
+    "job_unlocked": "",
+    "job_saved": "❤️ Saqlandi! «❤️ Saqlangan» bo'limidan ko'rishingiz mumkin.",
 
     # ---------- Profile ----------
     "profile_card": (
@@ -119,20 +138,21 @@ T = {
     "plan_free": (
         "🆓 *FREE — 0 so'm*\n"
         "  ✅ AI ish qidiruvi\n"
-        "  ✅ Coin orqali e'lon ochish\n"
-        "  ✅ Kuniga 3 ta qidiruv"
+        "  ✅ Bog'lanish bepul\n"
+        "  🪙 Har qidiruv = 2 coin\n"
+        "  📅 Kuniga 3 ta qidiruv"
     ),
     "plan_premium": (
         "⭐ *PREMIUM — 9 000 so'm/oy*\n"
-        "  ✅ Cheksiz qidiruv\n"
+        "  ✅ Cheksiz qidiruv (coinsiz)\n"
         "  ✅ AI search\n"
-        "  ✅ Coin ochish"
+        "  ✅ Bog'lanish bepul"
     ),
     "plan_premium_plus": (
         "💎 *PREMIUM+ — 19 990 so'm/oy*\n"
-        "  ✅ Cheksiz qidiruv\n"
+        "  ✅ Cheksiz qidiruv (coinsiz)\n"
         "  ✅ AI search\n"
-        "  ✅ Coin ochish\n"
+        "  ✅ Bog'lanish bepul\n"
         "  ✅ AI Career Advisor"
     ),
     "btn_buy_premium": "💳 Premium sotib olish",
@@ -146,8 +166,10 @@ T = {
     # ---------- Earn / Bonus ----------
     "earn_header": (
         "🪙 *Coin ishlash usullari*\n\n"
-        "1. 👥 Do'st taklif qilish — *2 coin* (1-do'st), keyingi har biri *1 coin*\n"
-        "2. 🎁 Bonus kanallarga qo'shilish — har biri *0.5 coin*"
+        "Eslatma: har qidiruv *2 coin* turadi (natija topilsa).\n\n"
+        "1. 👥 Do'st taklif qilish — *+2 coin* (1-do'st), keyingi har biri *+1 coin*\n"
+        "2. 🎁 Bonus kanallarga qo'shilish — har biri *+0.5 coin*\n"
+        "3. ⭐ Premium tarif — coinsiz cheksiz qidiruv"
     ),
     "btn_invite": "👥 Do'st taklif qilish",
     "btn_bonus_channels": "🎁 Bonus kanallar",
@@ -180,13 +202,14 @@ T = {
         "ℹ️ *ISH TOP AI — qisqa qo'llanma*\n\n"
         "🔍 *Ish qidirish*\n"
         "AI yordamida 6 ta platformadan vakansiyalar yig'iladi.\n"
-        "Faqat ish/kasb mavzusida so'rang!\n\n"
+        "🪙 Har qidiruv = *2 coin* (natija topilsa).\n"
+        "📞 Bog'lanish ma'lumotlari — *bepul*.\n\n"
         "🪙 *Coin ishlash*\n"
         "  • Do'st taklif qilish: *+2 coin* (1-do'st), *+1 coin* (keyingilari)\n"
         "  • Bonus kanal: *+0.5 coin*\n\n"
         "⭐ *Tariflar*\n"
-        "  • Free — kuniga 3 qidiruv\n"
-        "  • Premium — cheksiz qidiruv\n"
+        "  • Free — kuniga 3 qidiruv (har biri 2 coin)\n"
+        "  • Premium — cheksiz qidiruv, coinsiz\n"
         "  • Premium+ — cheksiz + AI Career Advisor\n\n"
         "👤 *Profil*\n"
         "Balans, tarif, statistikani ko'ring.\n\n"

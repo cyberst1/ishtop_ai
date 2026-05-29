@@ -78,7 +78,8 @@ class Settings(BaseSettings):
 
     # ---- Economy constants ----
     signup_gift_coins: float = 4.0
-    job_unlock_cost: float = 2.0
+    search_cost: float = 2.0          # NEW: 2 coin per search (charged on success)
+    job_unlock_cost: float = 0.0      # legacy; kept for back-compat (now 0 = free)
     referral_first_bonus: float = 2.0
     referral_next_bonus: float = 1.0
     bonus_channel_reward: float = 0.5
