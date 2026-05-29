@@ -9,6 +9,7 @@ def earn_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=T["btn_invite"], callback_data="earn:invite")],
         [InlineKeyboardButton(text=T["btn_bonus_channels"], callback_data="earn:bonus")],
+        [InlineKeyboardButton(text=T["btn_buy_coins"], callback_data="earn:buy")],
     ])
 
 

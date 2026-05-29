@@ -1,17 +1,16 @@
 """All Uzbek user-facing strings. Bot uses ONLY this dict."""
 from __future__ import annotations
 
-# `_` in @cybst_academy must be escaped in legacy Markdown, otherwise Telegram
-# treats it as the start of an italic span and rejects the message with
-# `Bad Request: can't parse entities`.
-# We render it as a clickable Markdown link — the visible underscore is escaped
-# inside the link text, the URL stays intact.
+# Underscore in @cybst_academy must be escaped in legacy Markdown — render as a
+# clickable link instead.
 SUPPORT_PLAIN = "@cybst_academy"
 SUPPORT_URL = "https://t.me/cybst_academy"
 SUPPORT = f"[@cybst\\_academy]({SUPPORT_URL})"
 
 T = {
-    # ---------- General ----------
+    # ====================================================================
+    # GENERAL
+    # ====================================================================
     "app_name": "ISH TOP AI",
     "support": SUPPORT,
     "loading": "⏳ Yuklanmoqda...",
@@ -29,7 +28,9 @@ T = {
     "yes": "✅ Ha",
     "no": "❌ Yo'q",
 
-    # ---------- /start ----------
+    # ====================================================================
+    # /start
+    # ====================================================================
     "start_welcome": (
         "👋 *ISH TOP AI*ga xush kelibsiz!\n\n"
         "🇺🇿 O'zbekiston bo'ylab eng yaxshi ish va xodim topish AI yordamchisi.\n\n"
@@ -48,7 +49,9 @@ T = {
         f"📩 Yordam kerakmi? {SUPPORT}"
     ),
 
-    # ---------- Main menu ----------
+    # ====================================================================
+    # Main menu
+    # ====================================================================
     "btn_search": "🔍 Ish qidirish",
     "btn_earn": "🪙 Coin ishlash",
     "btn_plans": "⭐ Tariflar",
@@ -56,7 +59,9 @@ T = {
     "btn_help": "ℹ️ Yordam",
     "btn_advisor": "🧠 AI Career Advisor",
 
-    # ---------- Search flow ----------
+    # ====================================================================
+    # Search flow
+    # ====================================================================
     "search_who_are_you": (
         "🧠 *Siz kimsiz?*\n\n"
         "Quyidagilardan birini tanlang:"
@@ -107,6 +112,7 @@ T = {
         "💡 Coin ishlash usullari:\n"
         "• 👥 Do'st taklif qilish (+2 coin / +1 coin)\n"
         "• 🎁 Bonus kanallar (+0.5 coin)\n"
+        "• 💳 Coin sotib olish (10/50/100/200 coin)\n"
         "• ⭐ Premium tarif olish (cheksiz qidiruv)\n\n"
         "«🪙 Coin ishlash» bo'limiga kiring."
     ),
@@ -115,10 +121,12 @@ T = {
         "Yangi qidiruv qilish uchun «🔍 Ish qidirish» ni bosing."
     ),
 
-    # ---------- Job card ----------
+    # ====================================================================
+    # Job card buttons
+    # ====================================================================
     "btn_job_save": "❤️ Saqlash",
     "btn_job_next": "⏭ Keyingi",
-    # Legacy keys (kept so any external reference doesn't break)
+    # Legacy keys — kept so external references don't break
     "btn_job_details": "📄 Batafsil",
     "btn_job_contact": "📞 Aloqa",
     "btn_job_unlock": "🔓 Ochish",
@@ -127,7 +135,9 @@ T = {
     "job_unlocked": "",
     "job_saved": "❤️ Saqlandi! «❤️ Saqlangan» bo'limidan ko'rishingiz mumkin.",
 
-    # ---------- Profile ----------
+    # ====================================================================
+    # Profile
+    # ====================================================================
     "profile_card": (
         "👤 *Sizning profilingiz*\n\n"
         "🪙 *Coin balansi:* {balance}\n"
@@ -137,7 +147,9 @@ T = {
         "❤️ *Saqlangan e'lonlar:* {saved}"
     ),
 
-    # ---------- Plans ----------
+    # ====================================================================
+    # Plans
+    # ====================================================================
     "plans_header": (
         "⭐ *Tariflar*\n\n"
         "Quyidagi tariflardan birini tanlang:"
@@ -170,16 +182,24 @@ T = {
         "Karta orqali to'lov qilingach, tarif darhol faollashtiriladi."
     ),
 
-    # ---------- Earn / Bonus ----------
+    # ====================================================================
+    # Earn / Bonus
+    # ====================================================================
     "earn_header": (
         "🪙 *Coin ishlash usullari*\n\n"
         "Eslatma: har qidiruv *2 coin* turadi (natija topilsa).\n\n"
-        "1. 👥 Do'st taklif qilish — *+2 coin* (1-do'st), keyingi har biri *+1 coin*\n"
-        "2. 🎁 Bonus kanallarga qo'shilish — har biri *+0.5 coin*\n"
-        "3. ⭐ Premium tarif — coinsiz cheksiz qidiruv"
+        "1️⃣ 👥 *Do'st taklif qilish*\n"
+        "   1-do'st: +2 coin · keyingi har biri: +1 coin\n\n"
+        "2️⃣ 🎁 *Bonus kanallarga qo'shilish*\n"
+        "   Har bir kanal: +0.5 coin\n\n"
+        "3️⃣ 💳 *Coin sotib olish*\n"
+        "   10 / 50 / 100 / 200 coin paketlari\n\n"
+        "4️⃣ ⭐ *Premium tarif*\n"
+        "   Coinsiz cheksiz qidiruv"
     ),
     "btn_invite": "👥 Do'st taklif qilish",
     "btn_bonus_channels": "🎁 Bonus kanallar",
+    "btn_buy_coins": "💳 Coin sotib olish",
     "invite_card": (
         "👥 *Do'stlaringizni taklif qiling*\n\n"
         "🎁 1-do'st uchun: *+2 coin*\n"
@@ -204,7 +224,33 @@ T = {
         "Qaytib keling — yaqinda qo'shamiz!"
     ),
 
-    # ---------- Help ----------
+    # ====================================================================
+    # Coin purchase (NEW)
+    # ====================================================================
+    "coins_packages_header": (
+        "💳 *Coin sotib olish*\n\n"
+        "Quyidagi paketlardan birini tanlang.\n"
+        "Tanlagandan so'ng to'lov bo'yicha ko'rsatma chiqadi."
+    ),
+    "purchase_instructions": (
+        "✅ *So'rov yaratildi: #{id}*\n\n"
+        "🪙 Olish: *{coins} coin*\n"
+        "💵 To'lov: *{price} so'm*\n\n"
+        "📲 *To'lov ko'rsatmalari:*\n"
+        "1. Quyidagi kartaga *{price} so'm* o'tkazing:\n"
+        "   `8600 4906 7728 0114`\n"
+        "   *Karta egasi:* Cyber ST Academy\n\n"
+        "2. To'lov chekini (skrinshot) *adminga* yuboring:\n"
+        f"   {SUPPORT}\n\n"
+        "3. Sarlavhada so'rov ID'ni ko'rsating: `#{id}`\n\n"
+        "⏱ Admin tasdiqlagandan keyin *{coins} coin* hisobingizga "
+        "darhol qo'shiladi va sizga xabar yuboriladi."
+    ),
+    "purchase_cancelled": "❌ So'rov #{id} bekor qilindi.",
+
+    # ====================================================================
+    # Help
+    # ====================================================================
     "help_text": (
         "ℹ️ *ISH TOP AI — qisqa qo'llanma*\n\n"
         "🔍 *Ish qidirish*\n"
@@ -212,19 +258,21 @@ T = {
         "🪙 Har qidiruv = *2 coin* (natija topilsa).\n"
         "📞 Bog'lanish ma'lumotlari — *bepul*.\n\n"
         "🪙 *Coin ishlash*\n"
-        "  • Do'st taklif qilish: *+2 coin* (1-do'st), *+1 coin* (keyingilari)\n"
-        "  • Bonus kanal: *+0.5 coin*\n\n"
+        "  • Do'st taklif: +2 / +1 coin\n"
+        "  • Bonus kanal: +0.5 coin\n"
+        "  • Coin sotib olish: 10/50/100/200 paketlari\n\n"
         "⭐ *Tariflar*\n"
-        "  • Free — kuniga 3 qidiruv (har biri 2 coin)\n"
-        "  • Premium — cheksiz qidiruv, coinsiz\n"
+        "  • Free — kuniga 3 qidiruv\n"
+        "  • Premium — cheksiz, coinsiz\n"
         "  • Premium+ — cheksiz + AI Career Advisor\n\n"
-        "👤 *Profil*\n"
-        "Balans, tarif, statistikani ko'ring.\n\n"
+        "👤 *Profil* — balans, tarif, statistikani ko'ring.\n\n"
         "📞 *Aloqa*\n"
         f"Savol/taklif bo'lsa: {SUPPORT}"
     ),
 
-    # ---------- Advisor ----------
+    # ====================================================================
+    # Advisor
+    # ====================================================================
     "advisor_only_premium_plus": (
         "💎 *AI Career Advisor* faqat *Premium+* foydalanuvchilar uchun.\n\n"
         "⭐ *Tariflar* bo'limidan obunani faollashtiring.\n\n"
@@ -239,28 +287,146 @@ T = {
         "• «Texnik intervyuga qanday tayyorgarlik ko'ray?»"
     ),
 
-    # ---------- Admin ----------
+    # ====================================================================
+    # User notifications (sent by admin actions)
+    # ====================================================================
+    "user_balance_credited_notify": (
+        "🎉 *Sizning hisobingizga {delta} coin qo'shildi!*\n\n"
+        "💳 Yangi balans: *{balance}* coin"
+    ),
+    "user_plan_granted_notify": (
+        "🎉 *Sizga {plan} tarifi berildi!*\n\n"
+        "⏱ Amal qilish muddati: *{days} kun*\n"
+        "Ish izlashda omad! 🎯"
+    ),
+
+    # ====================================================================
+    # ADMIN — login + panel
+    # ====================================================================
     "admin_not_allowed": "⛔ Sizda admin huquqi yo'q.",
     "admin_password_prompt": (
         "🔐 *Admin paroli kiriting:*\n\n"
         "(Parol darhol o'chiriladi)"
     ),
     "admin_password_wrong": "❌ Parol noto'g'ri. Qayta urinib ko'ring yoki `/admin_kirish` ni qayta yuboring.",
-    "admin_login_ok": "✅ Admin panelga xush kelibsiz.",
     "admin_session_expired": "⏰ Admin sessiyasi tugadi. Qayta kiring: `/admin_kirish`",
-    "admin_panel_title": "🎛 *Admin panel*",
+    "admin_login_ok": "✅ Admin panelga xush kelibsiz.",
+    "admin_logged_out": "👋 Admin panelidan chiqildi. Qayta kirish uchun: `/admin_kirish`",
+    "admin_panel_text": (
+        "🎛 *Admin panel*\n\n"
+        "Quyidagi bo'limlardan birini tanlang:\n\n"
+        "👥 *Userlar* — foydalanuvchilarni qidirish, balans/tarif berish\n"
+        "💳 *To'lovlar* — coin sotib olish so'rovlarini tasdiqlash\n"
+        "📊 *Statistika* — umumiy ko'rsatkichlar\n"
+        "📢 *Xabar yuborish* — barcha userlarga xabar\n"
+        "🎁 *Bonus kanallar* — qo'shish/o'chirish\n"
+        "📂 *Loglar* — oxirgi admin amallari\n\n"
+        "🔔 Tasdiqlanmagan to'lovlar: *{pending}*"
+    ),
     "btn_admin_users": "👥 Userlar",
-    "btn_admin_blocks": "🚫 Block System",
+    "btn_admin_payments": "💳 To'lovlar",
+    "btn_admin_stats": "📊 Statistika",
+    "btn_admin_broadcast": "📢 Xabar yuborish",
+    "btn_admin_bonus": "🎁 Bonus kanallar",
+    "btn_admin_logs": "📂 Loglar",
+    "btn_admin_logout": "🔓 Chiqish",
+    # Legacy keys (still referenced by old code paths)
+    "admin_panel_title": "🎛 *Admin panel*",
+    "btn_admin_blocks": "🚫 Block",
     "btn_admin_plans": "⭐ Tariflar",
     "btn_admin_balance": "🪙 Balans",
-    "btn_admin_bonus": "🎁 Bonus Kanallar",
-    "btn_admin_broadcast": "📢 Xabar Yuborish",
-    "btn_admin_stats": "📊 Statistika",
     "btn_admin_settings": "⚙️ Sozlamalar",
     "btn_admin_security": "🛡 Security",
-    "btn_admin_logs": "📂 Loglar",
 
-    # ---------- Plans names ----------
+    # ====================================================================
+    # ADMIN — Users
+    # ====================================================================
+    "admin_users_help": (
+        "👥 *Userlar boshqaruvi*\n\n"
+        "Foydalanuvchini qidirish uchun *yozing*:\n"
+        "  `/find 123456789`  — ID bo'yicha\n"
+        "  `/find @username`  — username bo'yicha\n\n"
+        "Topgandan keyin karta chiqadi:\n"
+        "  • 🪙 Coin qo'shish\n"
+        "  • ⭐ Tarif berish\n"
+        "  • 🚫 Bloklash / Blokdan chiqarish"
+    ),
+    "admin_user_not_found": "❌ Foydalanuvchi topilmadi. ID yoki @username to'g'riligini tekshiring.",
+    "admin_user_card": (
+        "👤 *Foydalanuvchi ma'lumotlari*\n\n"
+        "🆔 ID: `{user_id}`\n"
+        "👤 Ism: {full_name}\n"
+        "📛 Username: {username}\n"
+        "⭐ Tarif: *{plan}*\n"
+        "🪙 Coin: *{coins}*\n"
+        "👥 Referrallar: {referrals}\n"
+        "❤️ Saqlangan: {saved}\n"
+        "📅 Ro'yxatdan o'tgan: {registered}\n"
+        "🔓 Holati: {block_status}"
+    ),
+    "admin_pick_plan": (
+        "⭐ *User `{user_id}` uchun tarif tanlang:*\n\n"
+        "• 🆓 Free — bepul, kuniga 3 qidiruv\n"
+        "• ⭐ Premium — 30 kunga\n"
+        "• 💎 Premium+ — 30 kunga (AI Advisor bilan)"
+    ),
+    "admin_plan_granted": (
+        "✅ *Tarif berildi!*\n\n"
+        "🆔 User: `{user_id}`\n"
+        "⭐ Tarif: *{plan}*\n"
+        "⏱ Muddat: *{days} kun*\n\n"
+        "Foydalanuvchiga avtomatik xabar yuborildi."
+    ),
+
+    # ====================================================================
+    # ADMIN — Balance
+    # ====================================================================
+    "admin_balance_prompt": (
+        "🪙 *User `{user_id}` uchun coin qo'shing/oling*\n\n"
+        "Sonni yuboring:\n"
+        "  • Musbat son (masalan `10`) — *qo'shadi*\n"
+        "  • Manfiy son (masalan `-5`) — *oladi*\n"
+        "  • Kasr (masalan `2.5`) — to'g'ri qabul qilinadi"
+    ),
+    "admin_balance_bad_amount": "❌ Noto'g'ri son. Misol: `10`, `-5`, `2.5`",
+    "admin_balance_done": (
+        "✅ *Bajarildi!*\n\n"
+        "🆔 User: `{user_id}`\n"
+        "🪙 O'zgartirish: *{delta}*\n"
+        "💳 Yangi balans: *{balance}*"
+    ),
+
+    # ====================================================================
+    # ADMIN — Payments
+    # ====================================================================
+    "admin_payments_empty": (
+        "💳 *To'lovlar*\n\n"
+        "✅ Hozircha tasdiqlanmagan to'lov so'rovlari yo'q."
+    ),
+    "admin_payments_header": (
+        "💳 *Tasdiqlanishi kutilayotgan to'lovlar: {count} ta*\n\n"
+        "Quyida har bir so'rov alohida ko'rsatiladi.\n"
+        "✅ Tasdiqlasangiz — coin user hisobiga o'tadi va xabar yuboriladi.\n"
+        "❌ Rad etsangiz — user xabardor qilinadi."
+    ),
+    "admin_payment_not_found": "❌ So'rov topilmadi yoki allaqachon ko'rib chiqilgan.",
+    "admin_payment_confirmed": (
+        "✅ *To'lov #{id} tasdiqlandi!*\n\n"
+        "🆔 User: `{user_id}`\n"
+        "🪙 *+{coins} coin* qo'shildi\n"
+        "💳 Yangi balans: *{balance}*\n\n"
+        "Foydalanuvchiga avtomatik xabar yuborildi."
+    ),
+    "admin_payment_rejected": (
+        "❌ *To'lov #{id} rad etildi.*\n\n"
+        "🆔 User: `{user_id}`\n"
+        "🪙 So'rov: {coins} coin\n\n"
+        "Foydalanuvchiga avtomatik xabar yuborildi."
+    ),
+
+    # ====================================================================
+    # Plans names (used in profile card)
+    # ====================================================================
     "plan_name_free": "Free",
     "plan_name_premium": "Premium",
     "plan_name_premium_plus": "Premium+",

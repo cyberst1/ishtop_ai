@@ -1,15 +1,20 @@
-"""Admin: user list, search by id/username, user card."""
+"""Admin: find user by id/username, view card, manage from card."""
 from __future__ import annotations
+
+from datetime import datetime, timedelta
 
 from aiogram import Dispatcher, F, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from app.database.repositories import JobsRepo, UsersRepo
-from app.keyboards import admin_user_card_kb
+from app.bot.states import AdminBalanceSG
+from app.database.repositories import AdminLogsRepo, JobsRepo, UsersRepo
+from app.keyboards.admin import admin_back_kb, admin_plan_pick_kb, admin_user_card_kb
 from app.locales import T
-from app.security.sessions import AdminSessions
 from app.security.markdown import md_escape
+from app.security.sessions import AdminSessions
+from app.services.subscriptions import SubscriptionService
 
 router = Router(name="admin_users")
 
@@ -18,18 +23,25 @@ def _guard(uid: int) -> bool:
     return AdminSessions.is_valid(uid)
 
 
+_PLAN_LABEL = {"free": "Free", "premium": "Premium", "premium_plus": "Premium+"}
+
+
 @router.callback_query(F.data == "adm:users")
-async def list_users(cb: CallbackQuery) -> None:
+async def show_users_help(cb: CallbackQuery) -> None:
     if not _guard(cb.from_user.id):
         await cb.answer(T["admin_session_expired"], show_alert=True)
         return
-    rows = await UsersRepo.list_paginated(0, 20)
-    lines = ["👥 *Userlar (oxirgi 20):*\n"]
-    for r in rows:
-        uname = f"@{r['username']}" if r["username"] else "—"
-        lines.append(f"`{r['user_id']}` · {md_escape(uname)} · {r['plan']} · 🪙 {round(r['coin_balance'],2)}")
-    lines.append("\n🔎 Qidirish: `/find <id|@username>`")
-    await cb.message.edit_text("\n".join(lines))
+    rows = await UsersRepo.list_paginated(0, 10)
+    lines = [T["admin_users_help"], ""]
+    if rows:
+        lines.append("📋 *Oxirgi 10 ta foydalanuvchi:*")
+        for r in rows:
+            uname = f"@{r['username']}" if r["username"] else "—"
+            lines.append(
+                f"`{r['user_id']}` · {md_escape(uname)} · "
+                f"{_PLAN_LABEL.get(r['plan'], r['plan'])} · 🪙 {round(r['coin_balance'], 2)}"
+            )
+    await cb.message.edit_text("\n".join(lines), reply_markup=admin_back_kb())
     await cb.answer()
 
 
@@ -39,31 +51,89 @@ async def find_user(message: Message) -> None:
         return
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("Foydalanish: `/find 123456789` yoki `/find @username`")
+        await message.answer(T["admin_users_help"])
         return
     q = parts[1].strip()
     user = None
-    if q.startswith("@") or not q.isdigit():
+    if q.startswith("@") or not q.lstrip("-").isdigit():
         user = await UsersRepo.get_by_username(q)
     else:
         user = await UsersRepo.get(int(q))
     if not user:
-        await message.answer("❌ User topilmadi.")
+        await message.answer(T["admin_user_not_found"])
         return
+    await _send_user_card(message, user)
+
+
+async def _send_user_card(target, user) -> None:
     referrals = await UsersRepo.count_referrals(user["user_id"])
     saved = await JobsRepo.saved_count(user["user_id"])
-    text = (
-        "👤 *USER INFO*\n\n"
-        f"🆔 ID: `{user['user_id']}`\n"
-        f"👤 Username: {('@' + user['username']) if user['username'] else '—'}\n"
-        f"⭐ Tarif: {user['plan']}\n"
-        f"🪙 Coin: {round(user['coin_balance'],2)}\n"
-        f"👥 Referal: {referrals}\n"
-        f"❤️ Saqlangan: {saved}\n"
-        f"📅 Ro‘yxat: {user['created_at']}\n"
-        f"🚫 Block: {'ha' if user['is_blocked'] else 'yo‘q'}"
+    text = T["admin_user_card"].format(
+        user_id=user["user_id"],
+        username=("@" + user["username"]) if user["username"] else "—",
+        full_name=md_escape(user["full_name"] or "—"),
+        plan=_PLAN_LABEL.get(user["plan"], user["plan"]),
+        coins=round(user["coin_balance"], 2),
+        referrals=referrals,
+        saved=saved,
+        registered=user["created_at"],
+        block_status=("🚫 Bloklangan" if user["is_blocked"] else "✅ Faol"),
     )
-    await message.answer(text, reply_markup=admin_user_card_kb(user["user_id"], bool(user["is_blocked"])))
+    kb = admin_user_card_kb(user["user_id"], bool(user["is_blocked"]))
+    if isinstance(target, Message):
+        await target.answer(text, reply_markup=kb)
+    else:
+        await target.message.answer(text, reply_markup=kb)
+
+
+# ---------- Plan grant ----------
+
+@router.callback_query(F.data.startswith("adm:user:plan:"))
+async def open_plan_picker(cb: CallbackQuery) -> None:
+    if not _guard(cb.from_user.id):
+        await cb.answer(T["admin_session_expired"], show_alert=True)
+        return
+    uid = int(cb.data.split(":")[3])
+    await cb.message.answer(
+        T["admin_pick_plan"].format(user_id=uid),
+        reply_markup=admin_plan_pick_kb(uid),
+    )
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("adm:user:setplan:"))
+async def grant_plan(cb: CallbackQuery) -> None:
+    if not _guard(cb.from_user.id):
+        await cb.answer(T["admin_session_expired"], show_alert=True)
+        return
+    parts = cb.data.split(":")
+    uid = int(parts[3])
+    plan = parts[4]
+    days = 30 if plan != "free" else 365 * 10  # "free" = effectively no expiry
+    await SubscriptionService.activate(uid, plan, days=days, price=0,
+                                       payment_id=f"admin:{cb.from_user.id}")
+    await AdminLogsRepo.log(cb.from_user.id, "grant_plan",
+                            target_user=uid, payload=plan)
+    try:
+        await cb.message.edit_text(
+            T["admin_plan_granted"].format(
+                user_id=uid, plan=_PLAN_LABEL.get(plan, plan), days=days,
+            ),
+            reply_markup=admin_back_kb(),
+        )
+    except Exception:
+        pass
+    # Notify the user
+    try:
+        await cb.bot.send_message(
+            uid,
+            T["user_plan_granted_notify"].format(
+                plan=_PLAN_LABEL.get(plan, plan), days=days,
+            ),
+        )
+    except Exception:
+        pass
+    await cb.answer("✅ Tarif berildi.")
 
 
 def register(dp: Dispatcher) -> None:
