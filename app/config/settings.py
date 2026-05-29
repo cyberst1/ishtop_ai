@@ -5,7 +5,7 @@ Loads from environment / .env. NEVER log the bot token.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     bot_username: str = "ish_top_ai_bot"
 
     # ---- Admin ----
-    admin_ids: List[int] = Field(default_factory=list)
+    # Stored as a raw string ("123" or "123,456") and exposed as a list
+    # via the `admin_ids` property below.  This sidesteps pydantic-settings'
+    # JSON parsing for List[int] env values.
+    admin_ids_raw: str = Field(default="", alias="ADMIN_IDS")
     admin_password_hash: str = ""
     admin_session_ttl_minutes: int = 30
 
@@ -58,7 +61,8 @@ class Settings(BaseSettings):
     linkedin_cookie: str = ""
 
     # ---- Telegram channels parser ----
-    tg_api_id: int = 0
+    # Optional[int] so an empty .env value (TG_API_ID=) maps cleanly to None.
+    tg_api_id: Optional[int] = None
     tg_api_hash: str = ""
 
     # ---- Economy constants ----
@@ -73,12 +77,45 @@ class Settings(BaseSettings):
     premium_price: int = 9_000
     premium_plus_price: int = 19_990
 
-    @field_validator("admin_ids", mode="before")
+    # -------------------- validators --------------------
+
+    @field_validator("tg_api_id", mode="before")
     @classmethod
-    def parse_admin_ids(cls, v):
-        if isinstance(v, str):
-            return [int(x.strip()) for x in v.split(",") if x.strip()]
-        return v or []
+    def _parse_tg_api_id(cls, v):
+        if v is None or v == "":
+            return None
+        return v
+
+    # Generic: any int field that receives an empty string from .env
+    # should fall back to the field's default value.
+    @field_validator(
+        "admin_session_ttl_minutes", "rate_limit_per_min",
+        "webapp_port", "parser_timeout", "parser_concurrency",
+        mode="before",
+    )
+    @classmethod
+    def _empty_str_to_default(cls, v, info):
+        if v is None or v == "":
+            return cls.model_fields[info.field_name].default
+        return v
+
+    # -------------------- properties --------------------
+
+    @property
+    def admin_ids(self) -> List[int]:
+        raw = (self.admin_ids_raw or "").strip()
+        if not raw:
+            return []
+        out: List[int] = []
+        for chunk in raw.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            try:
+                out.append(int(chunk))
+            except ValueError:
+                continue
+        return out
 
     @property
     def db_path(self) -> Path:
