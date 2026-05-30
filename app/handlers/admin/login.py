@@ -1,4 +1,4 @@
-"""/admin_kirish — bcrypt password + session + simple panel."""
+"""/admin_kirish — bcrypt password + session + rich dashboard."""
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
@@ -8,7 +8,11 @@ from aiogram.types import CallbackQuery, Message
 
 from app.bot.states import AdminLoginSG
 from app.config import settings
-from app.database.repositories import AdminLogsRepo, CoinPurchasesRepo
+from app.database.engine import get_db
+from app.database.repositories import (
+    AdminLogsRepo, CoinPurchasesRepo, SearchesRepo,
+    SubscriptionsRepo, UsersRepo,
+)
 from app.keyboards import admin_main_kb
 from app.locales import T
 from app.security.passwords import verify_admin
@@ -22,10 +26,50 @@ def _is_admin(user_id: int) -> bool:
     return user_id in settings.admin_ids
 
 
+# ---------- dashboard ----------
+
+async def _build_dashboard() -> tuple[str, int]:
+    """Return (formatted_dashboard_text, pending_payments_count)."""
+    db = get_db()
+
+    total_users     = await UsersRepo.total_count()
+    active_7d       = await UsersRepo.active_count(7)
+    premium_count   = await SubscriptionsRepo.count_premium()
+    pending_pay     = await CoinPurchasesRepo.count_pending()
+    searches_total  = await SearchesRepo.total()
+
+    today_searches = (await db.fetchone(
+        "SELECT COUNT(*) AS c FROM searches WHERE date(created_at) = date('now')"
+    ))["c"]
+    today_signups = (await db.fetchone(
+        "SELECT COUNT(*) AS c FROM users WHERE date(created_at) = date('now')"
+    ))["c"]
+    today_revenue = (await db.fetchone(
+        """SELECT COALESCE(SUM(price), 0) AS s FROM coin_purchases
+           WHERE status = 'confirmed' AND date(confirmed_at) = date('now')"""
+    ))["s"]
+    total_revenue = await CoinPurchasesRepo.total_revenue()
+    coins_spent = (await db.fetchone(
+        "SELECT COALESCE(SUM(-delta), 0) AS s FROM balances WHERE delta < 0"
+    ))["s"]
+
+    text = T["admin_dashboard"].format(
+        total_users=total_users,
+        active_7d=active_7d,
+        today_signups=today_signups,
+        premium_count=premium_count,
+        searches_total=searches_total,
+        today_searches=today_searches,
+        coins_spent=round(coins_spent, 2),
+        today_revenue=f"{today_revenue:,}".replace(",", " "),
+        total_revenue=f"{total_revenue:,}".replace(",", " "),
+        pending=pending_pay,
+    )
+    return text, pending_pay
+
+
 async def _send_panel(target, *, edit: bool = False) -> None:
-    """Render the home admin panel (with pending-payments badge)."""
-    pending = await CoinPurchasesRepo.count_pending()
-    text = T["admin_panel_text"].format(pending=pending)
+    text, pending = await _build_dashboard()
     kb = admin_main_kb(pending_payments=pending)
     if edit and isinstance(target, CallbackQuery):
         try:
@@ -39,6 +83,8 @@ async def _send_panel(target, *, edit: bool = False) -> None:
         await target.message.answer(text, reply_markup=kb)
 
 
+# ---------- login ----------
+
 @router.message(Command("admin_kirish"))
 async def cmd_admin_login(message: Message, state: FSMContext) -> None:
     if not _is_admin(message.from_user.id):
@@ -46,7 +92,6 @@ async def cmd_admin_login(message: Message, state: FSMContext) -> None:
         await AdminLogsRepo.log(message.from_user.id, "login_attempt_not_admin", success=False)
         return
 
-    # Already logged in? Skip password.
     if AdminSessions.is_valid(message.from_user.id):
         await _send_panel(message)
         return
@@ -62,7 +107,7 @@ async def check_password(message: Message, state: FSMContext) -> None:
         return
     pwd = (message.text or "").strip()
     try:
-        await message.delete()  # remove the password from chat
+        await message.delete()
     except Exception:
         pass
 
@@ -81,6 +126,15 @@ async def check_password(message: Message, state: FSMContext) -> None:
     await AdminLogsRepo.log(message.from_user.id, "login_ok", success=True)
     await state.clear()
     await message.answer(T["admin_login_ok"])
+    await _send_panel(message)
+
+
+@router.message(Command("admin_menu"))
+async def cmd_admin_menu(message: Message) -> None:
+    """Quick shortcut to open admin home if session is valid."""
+    if not AdminSessions.is_valid(message.from_user.id):
+        await message.answer(T["admin_session_expired"])
+        return
     await _send_panel(message)
 
 

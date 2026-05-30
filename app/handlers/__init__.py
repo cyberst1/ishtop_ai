@@ -2,7 +2,7 @@ from aiogram import Dispatcher
 
 from app.handlers import (
     start, search, profile, plans, bonus, referral, help as help_h, advisor,
-    coins,
+    coins, menu, saved,
 )
 from app.handlers.admin import (
     login as admin_login,
@@ -32,6 +32,7 @@ def register_all_handlers(dp: Dispatcher) -> None:
     admin_payments.register(dp)
 
     # User handlers
+    menu.register(dp)        # /menu, /cancel — must be before others
     start.register(dp)
     search.register(dp)
     profile.register(dp)
@@ -41,6 +42,7 @@ def register_all_handlers(dp: Dispatcher) -> None:
     help_h.register(dp)
     advisor.register(dp)
     coins.register(dp)
+    saved.register(dp)
 
 
 __all__ = ["register_all_handlers"]

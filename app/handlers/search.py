@@ -1,11 +1,10 @@
 """
 Search flow:
-    role  →  query  →  IntentGuard  →  pre-check balance
-                                     →  aggregate from 6 parsers
-                                     →  charge 2 coin (only if results found)
-                                     →  show all cards (contacts FREE)
-
-Premium / Premium+ users: no daily limit, no coin charge for searches.
+  role  →  query  →  IntentGuard
+                  →  pre-check balance
+                  →  aggregate (6 parsers in parallel)
+                  →  charge 2 coin (only if results found)
+                  →  paginated cards (1/N) with FREE contacts
 """
 from __future__ import annotations
 
@@ -43,7 +42,10 @@ async def pick_role(cb: CallbackQuery, state: FSMContext) -> None:
     role = cb.data.split(":", 1)[1]
     await state.update_data(role=role)
     await state.set_state(SearchSG.query)
-    await cb.message.edit_text(T["search_query_prompt"])
+    try:
+        await cb.message.edit_text(T["search_query_prompt"])
+    except Exception:
+        await cb.message.answer(T["search_query_prompt"])
     await cb.answer()
 
 
@@ -54,7 +56,7 @@ async def do_search(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
     is_premium = await SubscriptionService.is_premium(user_id)
 
-    # 1. Daily limit (free plan only)
+    # 1. Daily limit (free plan)
     if not is_premium:
         used = await SearchesRepo.count_today(user_id)
         if used >= settings.free_daily_searches:
@@ -64,13 +66,13 @@ async def do_search(message: Message, state: FSMContext) -> None:
             await state.clear()
             return
 
-    # 2. Sanitize input
+    # 2. Sanitize
     query = sanitize_query(message.text or "")
     if not query:
         await message.answer(T["search_off_topic"])
         return
 
-    # 3. Intent guard — only career-related queries
+    # 3. Intent guard
     verdict = await IntentGuard.check(query)
     if not verdict.allowed:
         await message.answer(T["search_off_topic"])
@@ -80,8 +82,7 @@ async def do_search(message: Message, state: FSMContext) -> None:
         )
         return
 
-    # 4. Pre-check balance for free users (we charge AFTER results are found,
-    #    but we want to give a clear message upfront if balance is too low)
+    # 4. Pre-check balance
     if not is_premium:
         balance = await CoinEconomy.balance(user_id)
         if balance < settings.search_cost:
@@ -96,8 +97,13 @@ async def do_search(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     role = data.get("role", "jobseeker")
 
-    # 5. Run the parsers
-    await message.answer(T["search_searching"])
+    # 5. Run parsers (with typing indicator)
+    progress = await message.answer(T["search_searching"])
+    try:
+        await message.bot.send_chat_action(message.chat.id, action="typing")
+    except Exception:
+        pass
+
     aggregator = SearchAggregator()
     jobs, keywords = await aggregator.search(query, role=role)
 
@@ -107,22 +113,25 @@ async def do_search(message: Message, state: FSMContext) -> None:
         extra={"user_id": user_id, "n": len(jobs), "kw": keywords[:5]},
     )
 
-    # 6. No results → no charge, no daily-limit increment beyond what was logged
+    # delete the "searching..." message
+    try:
+        await progress.delete()
+    except Exception:
+        pass
+
+    # 6. No results → no charge
     if not jobs:
         await message.answer(T["search_no_results"])
         await state.clear()
         return
 
-    # 7. Charge 2 coin (free users only) — atomic spend with audit ledger
+    # 7. Charge 2 coin
     if not is_premium:
         ok, new_balance = await CoinEconomy.spend(
-            user_id,
-            settings.search_cost,
-            reason="search",
-            related_id=query[:40],
+            user_id, settings.search_cost,
+            reason="search", related_id=query[:40],
         )
         if not ok:
-            # Race: balance dropped between pre-check and now.
             await message.answer(
                 T["search_insufficient_coins"].format(
                     balance=round(new_balance, 2), cost=settings.search_cost
@@ -140,7 +149,7 @@ async def do_search(message: Message, state: FSMContext) -> None:
 
     # 8. Persist & start browsing
     await JobsRepo.upsert_many(jobs)
-    await state.update_data(jobs=[j["id"] for j in jobs], idx=0)
+    await state.update_data(jobs=[j["id"] for j in jobs], idx=0, total=len(jobs))
     await state.set_state(SearchSG.browsing)
     await _show_current(message, state)
 
@@ -151,13 +160,17 @@ async def _show_current(target, state: FSMContext) -> None:
     data = await state.get_data()
     ids = data.get("jobs", [])
     idx = data.get("idx", 0)
+    total = data.get("total", len(ids))
 
     if idx >= len(ids):
         msg = T["search_all_seen"]
         if isinstance(target, Message):
             await target.answer(msg)
         else:
-            await target.message.answer(msg)
+            try:
+                await target.message.answer(msg)
+            except Exception:
+                pass
         await state.clear()
         return
 
@@ -167,12 +180,18 @@ async def _show_current(target, state: FSMContext) -> None:
         await _show_current(target, state)
         return
 
+    pagination = T["job_pagination"].format(idx=idx + 1, total=total)
     text, _ = render_job_card(dict(job))
+    text = f"{pagination}\n{text}"
     kb = job_card_kb(job["id"])
+
     if isinstance(target, Message):
         await target.answer(text, reply_markup=kb, disable_web_page_preview=True)
     else:
-        await target.message.answer(text, reply_markup=kb, disable_web_page_preview=True)
+        try:
+            await target.message.answer(text, reply_markup=kb, disable_web_page_preview=True)
+        except Exception:
+            pass
 
 
 @router.callback_query(F.data == "job:next")
@@ -186,7 +205,10 @@ async def next_job(cb: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "search:cancel")
 async def cancel_search(cb: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await cb.message.edit_text("❌ Qidiruv bekor qilindi.")
+    try:
+        await cb.message.edit_text("❌ Qidiruv bekor qilindi.")
+    except Exception:
+        pass
     await cb.answer()
 
 

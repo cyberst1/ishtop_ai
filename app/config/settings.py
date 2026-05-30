@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     # ---- Branding / Support ----
     support_username: str = "cybst_academy"
 
+    # ---- Payment ----
+    payment_card_number: str = "8600 4906 7728 0114"
+    payment_card_owner: str = "Cyber ST Academy"
+
     # -------------------- validators --------------------
 
     @field_validator("tg_api_id", mode="before")

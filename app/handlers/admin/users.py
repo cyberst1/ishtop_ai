@@ -1,15 +1,23 @@
-"""Admin: find user by id/username, view card, manage from card."""
+"""
+Admin user management — accepts plain text search anywhere in admin chat.
+
+Search by:
+  • Numeric ID:     8392229980
+  • Username:       @ishtop_admin   (or just ishtop_admin)
+  • /find prefix:   /find @username  (legacy)
+"""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+import re
 
 from aiogram import Dispatcher, F, Router
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from app.bot.states import AdminBalanceSG
-from app.database.repositories import AdminLogsRepo, JobsRepo, UsersRepo
+from app.config import settings
+from app.database.repositories import (
+    AdminLogsRepo, JobsRepo, UsersRepo,
+)
 from app.keyboards.admin import admin_back_kb, admin_plan_pick_kb, admin_user_card_kb
 from app.locales import T
 from app.security.markdown import md_escape
@@ -24,6 +32,9 @@ def _guard(uid: int) -> bool:
 
 
 _PLAN_LABEL = {"free": "Free", "premium": "Premium", "premium_plus": "Premium+"}
+
+_USERNAME_RE = re.compile(r"^@?[A-Za-z][A-Za-z0-9_]{4,31}$")
+_USER_ID_RE = re.compile(r"^\d{5,15}$")
 
 
 @router.callback_query(F.data == "adm:users")
@@ -45,22 +56,44 @@ async def show_users_help(cb: CallbackQuery) -> None:
     await cb.answer()
 
 
+# Plain text search — only fires if the message looks like a user ID or @username
+# AND the sender is an authenticated admin.
+def _looks_like_user_query(text: str) -> bool:
+    text = (text or "").strip()
+    return bool(_USER_ID_RE.match(text) or _USERNAME_RE.match(text))
+
+
+@router.message(F.text.func(_looks_like_user_query))
+async def text_search_user(message: Message) -> None:
+    if message.from_user.id not in settings.admin_ids:
+        return
+    if not _guard(message.from_user.id):
+        return
+    await _do_find(message, message.text.strip())
+
+
 @router.message(Command("find"))
-async def find_user(message: Message) -> None:
+async def find_user_cmd(message: Message) -> None:
     if not _guard(message.from_user.id):
         return
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2:
         await message.answer(T["admin_users_help"])
         return
-    q = parts[1].strip()
+    await _do_find(message, parts[1].strip())
+
+
+async def _do_find(message: Message, q: str) -> None:
     user = None
     if q.startswith("@") or not q.lstrip("-").isdigit():
         user = await UsersRepo.get_by_username(q)
     else:
-        user = await UsersRepo.get(int(q))
+        try:
+            user = await UsersRepo.get(int(q))
+        except ValueError:
+            user = None
     if not user:
-        await message.answer(T["admin_user_not_found"])
+        await message.answer(T["admin_user_not_found"], reply_markup=admin_back_kb())
         return
     await _send_user_card(message, user)
 
@@ -83,7 +116,10 @@ async def _send_user_card(target, user) -> None:
     if isinstance(target, Message):
         await target.answer(text, reply_markup=kb)
     else:
-        await target.message.answer(text, reply_markup=kb)
+        try:
+            await target.message.edit_text(text, reply_markup=kb)
+        except Exception:
+            await target.message.answer(text, reply_markup=kb)
 
 
 # ---------- Plan grant ----------
@@ -109,7 +145,7 @@ async def grant_plan(cb: CallbackQuery) -> None:
     parts = cb.data.split(":")
     uid = int(parts[3])
     plan = parts[4]
-    days = 30 if plan != "free" else 365 * 10  # "free" = effectively no expiry
+    days = 30 if plan != "free" else 365 * 10
     await SubscriptionService.activate(uid, plan, days=days, price=0,
                                        payment_id=f"admin:{cb.from_user.id}")
     await AdminLogsRepo.log(cb.from_user.id, "grant_plan",
@@ -123,7 +159,6 @@ async def grant_plan(cb: CallbackQuery) -> None:
         )
     except Exception:
         pass
-    # Notify the user
     try:
         await cb.bot.send_message(
             uid,
