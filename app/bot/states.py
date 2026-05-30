@@ -39,3 +39,7 @@ class AdminPriceSG(StatesGroup):
 
 class AdminBlockSG(StatesGroup):
     user_input = State()
+
+
+class AdminGrantPlanSG(StatesGroup):
+    user_input = State()

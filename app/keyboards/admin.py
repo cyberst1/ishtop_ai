@@ -86,6 +86,14 @@ def admin_plan_pick_kb(user_id: int) -> InlineKeyboardMarkup:
     ])
 
 
+def admin_subs_action_kb() -> InlineKeyboardMarkup:
+    """Header action shown above the pending-payments list inside OBUNA."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Userga tarif ulash",
+                              callback_data="adm:grant_plan_start")],
+    ])
+
+
 def admin_prices_kb() -> InlineKeyboardMarkup:
     """Inline picker for which setting to edit."""
     from app.services.runtime_config import EDITABLE_KEYS, LABELS

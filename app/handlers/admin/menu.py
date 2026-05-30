@@ -70,6 +70,11 @@ async def open_subscriptions(message: Message, state: FSMContext, bot: Bot) -> N
     if not _admin_only(message.from_user.id):
         return
     await state.clear()
+
+    # Always show 'Userga tarif ulash' action header
+    from app.keyboards.admin import admin_subs_action_kb
+    await message.answer(T["admin_subs_header"], reply_markup=admin_subs_action_kb())
+
     rows = await CoinPurchasesRepo.list_pending(20)
     if not rows:
         await message.answer(T["admin_payments_empty"])

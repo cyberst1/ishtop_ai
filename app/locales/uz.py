@@ -85,16 +85,15 @@ T = {
     "btn_role_employer": "🏢 Ish beruvchiman",
     "search_query_prompt": (
         "💬 *Qanday ish izlayapsiz?*\n\n"
-        "Misol uchun:\n"
-        "• Python dasturchi\n"
-        "• Grafik dizayner\n"
-        "• SMM manager\n"
-        "• Remote frontend developer\n"
-        "• Toshkentda kuryer\n"
-        "• Buxgalter junior\n\n"
+        "Tabiiy gap bilan ham yozsangiz bo'ladi:\n"
+        "• Telegram bot yasab beraman\n"
+        "• Web sayt qilib beraman\n"
+        "• Toshkentda kuryer bo'lib ishlasam\n"
+        "• Uyda ishlaydigan dasturchi\n"
+        "• SMM manager kerak\n"
+        "• Junior python\n\n"
         "🪙 Har qidiruv: *2 coin* (faqat natija topilsa)\n"
         "📞 Bog'lanish ma'lumotlari *bepul*\n\n"
-        "Iltimos, faqat *ish/kasb* bilan bog'liq yozing.\n"
         "❌ Bekor qilish uchun: `/cancel`"
     ),
     "search_searching": "🔎 *AI yordamida 6 ta platformadan qidirilmoqda...*",
@@ -517,6 +516,40 @@ T = {
         "{flag}\n\n"
         "🆔 User: `{user_id}`\n"
         "📛 Username: {username}"
+    ),
+
+    # ====================================================================
+    # ADMIN — OBUNA (subscriptions section)
+    # ====================================================================
+    "admin_subs_header": (
+        "💳 *OBUNA — Foydalanuvchi tariflari*\n\n"
+        "Bu yerda *coin sotib olish* so'rovlarini tasdiqlash mumkin.\n"
+        "Yoki *to'g'ridan-to'g'ri* userga tarif ulash:\n"
+        "👇 Pastdagi tugmani bosing"
+    ),
+    "admin_grant_plan_prompt": (
+        "➕ *Userga tarif ulash*\n\n"
+        "User ID yoki @username yuboring:\n\n"
+        "Misol:\n"
+        "  `8392229980`\n"
+        "  `@username`\n\n"
+        "❌ Bekor qilish: `/cancel`"
+    ),
+    "admin_grant_plan_pick": (
+        "👤 *Topildi:*\n\n"
+        "🆔 ID: `{user_id}`\n"
+        "👤 Ism: {full_name}\n"
+        "📛 Username: {username}\n"
+        "⭐ Joriy tarif: *{current_plan}*\n\n"
+        "Quyidagi tariflardan birini tanlang 👇"
+    ),
+    "admin_tarif_usage": (
+        "Tezkor buyruq:\n"
+        "  `/tarif <user_id> <plan>`\n\n"
+        "*plan* qiymatlari: `free` / `premium` / `premium_plus`\n\n"
+        "Misol:\n"
+        "  `/tarif 8392229980 premium`\n"
+        "  `/tarif 8392229980 premium_plus`"
     ),
 
     # ====================================================================

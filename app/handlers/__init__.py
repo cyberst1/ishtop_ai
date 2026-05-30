@@ -17,6 +17,7 @@ from app.handlers.admin import (
     security as admin_security,
     payments as admin_payments,
     prices as admin_prices,
+    grant_plan as admin_grant_plan,
 )
 
 
@@ -34,6 +35,7 @@ def register_all_handlers(dp: Dispatcher) -> None:
     admin_security.register(dp)
     admin_payments.register(dp)
     admin_prices.register(dp)
+    admin_grant_plan.register(dp)
 
     # ---- User
     user_menu.register(dp)        # /menu, /cancel
