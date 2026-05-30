@@ -1,4 +1,4 @@
-"""OLX.uz HTML parser (jobs section)."""
+"""OLX.uz HTML parser (jobs listing — uses /list/q-… URL pattern)."""
 from __future__ import annotations
 
 from typing import Any
@@ -12,7 +12,7 @@ from app.utils.logger import logger
 
 class OlxUzParser(BaseParser):
     SOURCE = "olx_uz"
-    BASE_URL = "https://www.olx.uz/ish/q-{q}/"
+    BASE_URL = "https://www.olx.uz/list/q-{q}/"
 
     async def search(self, query: str, keywords: list[str]) -> list[dict[str, Any]]:
         url = self.BASE_URL.format(q=quote_plus(query))
@@ -28,22 +28,32 @@ class OlxUzParser(BaseParser):
         out: list[dict[str, Any]] = []
         cards = soup.select('div[data-cy="l-card"]')[: self.MAX_RESULTS]
         for c in cards:
-            a = c.find("a")
-            href = a.get("href") if a else None
+            title_el = c.select_one('[data-cy="ad-card-title"]') or c.select_one("h6") or c.select_one("h4")
+            title = title_el.get_text(strip=True) if title_el else ""
+
+            # link
+            link_el = (title_el and title_el.find("a")) or c.find("a")
+            href = link_el.get("href") if link_el else None
             if not href:
                 continue
             if not href.startswith("http"):
                 href = "https://www.olx.uz" + href
-            title_el = c.select_one("h6") or c.select_one("h4")
+
             price_el = c.select_one('[data-testid="ad-price"]')
-            loc_el = c.select_one('p[data-testid="location-date"]')
-            title = (title_el.get_text(strip=True) if title_el else "")
+            loc_el = c.select_one('[data-testid="location-date"]')
+
+            location = ""
+            if loc_el:
+                txt = loc_el.get_text(strip=True)
+                # "Toshkent · 12 dekabr" → take left part
+                location = txt.split("·")[0].strip()
+
             out.append(self.normalize({
                 "title": title,
                 "company": "",
-                "location": loc_el.get_text(strip=True) if loc_el else "",
+                "location": location,
                 "salary": price_el.get_text(strip=True) if price_el else None,
-                "url": href,
+                "url": href.split("?")[0],
                 "description": "",
                 "is_remote": JobNormalizer.looks_remote(title),
             }))
