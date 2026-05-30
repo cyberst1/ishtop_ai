@@ -3,12 +3,9 @@ Centralized configuration via pydantic-settings.
 
 IMPORTANT: We load .env *manually* with interpolate=False so that the
 `$` characters inside bcrypt hashes (e.g. `$2b$12$...`) are preserved verbatim.
-If we let pydantic-settings load it via env_file=, python-dotenv would try to
-expand `$2b` as a variable and corrupt the hash.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -23,7 +20,6 @@ if _ENV_PATH.exists():
 
 
 class Settings(BaseSettings):
-    # env_file=None → don't re-load with interpolation
     model_config = SettingsConfigDict(
         env_file=None,
         case_sensitive=False,
@@ -36,17 +32,19 @@ class Settings(BaseSettings):
 
     # ---- Admin ----
     admin_ids_raw: str = Field(default="", alias="ADMIN_IDS")
-    # Either of these works:
-    #   ADMIN_PASSWORD=my_plain_password         (simple, hashed at startup)
-    #   ADMIN_PASSWORD_HASH=$2b$12$...           (bcrypt hash from `.env`)
     admin_password: str = ""
     admin_password_hash: str = ""
     admin_session_ttl_minutes: int = 30
 
-    # ---- AI ----
+    # ---- AI (OpenRouter — OpenAI-compatible) ----
+    # Primary (new) keys
+    ai_api_key: str = ""
+    ai_base_url: str = "https://openrouter.ai/api/v1"
+    ai_model: str = "deepseek/deepseek-v4-flash:free"
+    # Legacy NVIDIA aliases — still read from .env if present
     nvidia_api_key: str = ""
-    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
-    nvidia_model: str = "meta/llama-3.1-70b-instruct"
+    nvidia_base_url: str = ""
+    nvidia_model: str = ""
 
     # ---- Database ----
     database_path: str = "data/ish_top_ai.db"
@@ -78,8 +76,8 @@ class Settings(BaseSettings):
 
     # ---- Economy constants ----
     signup_gift_coins: float = 4.0
-    search_cost: float = 2.0          # NEW: 2 coin per search (charged on success)
-    job_unlock_cost: float = 0.0      # legacy; kept for back-compat (now 0 = free)
+    search_cost: float = 2.0
+    job_unlock_cost: float = 0.0
     referral_first_bonus: float = 2.0
     referral_next_bonus: float = 1.0
     bonus_channel_reward: float = 0.5
@@ -133,6 +131,19 @@ class Settings(BaseSettings):
             except ValueError:
                 continue
         return out
+
+    @property
+    def effective_ai_api_key(self) -> str:
+        """Prefer AI_API_KEY; fall back to legacy NVIDIA_API_KEY."""
+        return self.ai_api_key or self.nvidia_api_key
+
+    @property
+    def effective_ai_base_url(self) -> str:
+        return self.ai_base_url or self.nvidia_base_url or "https://openrouter.ai/api/v1"
+
+    @property
+    def effective_ai_model(self) -> str:
+        return self.ai_model or self.nvidia_model or "deepseek/deepseek-v4-flash:free"
 
     @property
     def db_path(self) -> Path:
