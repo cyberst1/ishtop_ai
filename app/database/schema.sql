@@ -207,3 +207,12 @@ CREATE TABLE IF NOT EXISTS coin_purchases (
 CREATE INDEX IF NOT EXISTS idx_purchases_user      ON coin_purchases(user_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_status    ON coin_purchases(status);
 CREATE INDEX IF NOT EXISTS idx_purchases_created   ON coin_purchases(created_at);
+
+
+-- 15. Runtime app settings (admin-editable, key/value)
+CREATE TABLE IF NOT EXISTS app_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by  INTEGER
+);

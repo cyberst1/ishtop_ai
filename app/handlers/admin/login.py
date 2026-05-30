@@ -1,4 +1,4 @@
-"""/admin_kirish — bcrypt password + session + rich dashboard."""
+"""/admin_kirish — bcrypt password + session, then ReplyKeyboard panel."""
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
@@ -13,7 +13,7 @@ from app.database.repositories import (
     AdminLogsRepo, CoinPurchasesRepo, SearchesRepo,
     SubscriptionsRepo, UsersRepo,
 )
-from app.keyboards import admin_main_kb
+from app.keyboards.admin import admin_reply_kb, remove_kb
 from app.locales import T
 from app.security.passwords import verify_admin
 from app.security.sessions import AdminSessions
@@ -31,7 +31,6 @@ def _is_admin(user_id: int) -> bool:
 async def _build_dashboard() -> tuple[str, int]:
     """Return (formatted_dashboard_text, pending_payments_count)."""
     db = get_db()
-
     total_users     = await UsersRepo.total_count()
     active_7d       = await UsersRepo.active_count(7)
     premium_count   = await SubscriptionsRepo.count_premium()
@@ -68,19 +67,9 @@ async def _build_dashboard() -> tuple[str, int]:
     return text, pending_pay
 
 
-async def _send_panel(target, *, edit: bool = False) -> None:
+async def _send_panel(message: Message) -> None:
     text, pending = await _build_dashboard()
-    kb = admin_main_kb(pending_payments=pending)
-    if edit and isinstance(target, CallbackQuery):
-        try:
-            await target.message.edit_text(text, reply_markup=kb)
-            return
-        except Exception:
-            pass
-    if isinstance(target, Message):
-        await target.answer(text, reply_markup=kb)
-    elif isinstance(target, CallbackQuery):
-        await target.message.answer(text, reply_markup=kb)
+    await message.answer(text, reply_markup=admin_reply_kb(pending_payments=pending))
 
 
 # ---------- login ----------
@@ -131,19 +120,26 @@ async def check_password(message: Message, state: FSMContext) -> None:
 
 @router.message(Command("admin_menu"))
 async def cmd_admin_menu(message: Message) -> None:
-    """Quick shortcut to open admin home if session is valid."""
     if not AdminSessions.is_valid(message.from_user.id):
         await message.answer(T["admin_session_expired"])
         return
     await _send_panel(message)
 
 
+# ---------- legacy inline panel callbacks (still used by 🏠 home buttons) ----
+
 @router.callback_query(F.data == "adm:home")
 async def adm_home(cb: CallbackQuery) -> None:
     if not AdminSessions.is_valid(cb.from_user.id):
         await cb.answer(T["admin_session_expired"], show_alert=True)
         return
-    await _send_panel(cb, edit=True)
+    text, pending = await _build_dashboard()
+    try:
+        await cb.message.edit_text(text)
+    except Exception:
+        pass
+    # Re-assert reply keyboard in case it was lost
+    await cb.message.answer("🏠", reply_markup=admin_reply_kb(pending_payments=pending))
     await cb.answer()
 
 
@@ -155,7 +151,17 @@ async def adm_logout(cb: CallbackQuery) -> None:
         await cb.message.edit_text(T["admin_logged_out"])
     except Exception:
         pass
+    await cb.message.answer("👋", reply_markup=remove_kb())
     await cb.answer("👋 Chiqildi.")
+
+
+@router.callback_query(F.data == "adm:cancel_plan")
+async def cancel_plan(cb: CallbackQuery) -> None:
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
+    await cb.answer()
 
 
 def register(dp: Dispatcher) -> None:

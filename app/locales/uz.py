@@ -193,13 +193,13 @@ T = {
         "  📅 Kuniga 3 ta qidiruv"
     ),
     "plan_premium": (
-        "⭐ *PREMIUM — 9 000 so'm/oy*\n"
+        "⭐ *PREMIUM — {price} so'm/oy*\n"
         "  ✅ Cheksiz qidiruv (coinsiz)\n"
         "  ✅ AI search\n"
         "  ✅ Bog'lanish bepul"
     ),
     "plan_premium_plus": (
-        "💎 *PREMIUM+ — 19 990 so'm/oy*\n"
+        "💎 *PREMIUM+ — {price} so'm/oy*\n"
         "  ✅ Cheksiz qidiruv (coinsiz)\n"
         "  ✅ AI search\n"
         "  ✅ Bog'lanish bepul\n"
@@ -351,7 +351,7 @@ T = {
     "admin_login_ok": "✅ Admin panelga xush kelibsiz.",
     "admin_logged_out": "👋 Admin panelidan chiqildi. Qayta kirish: `/admin_kirish`",
     "admin_dashboard": (
-        "🎛 *ADMIN PANEL — Dashboard*\n\n"
+        "🎛 *ADMIN PANEL*\n\n"
         "👥 *Foydalanuvchilar*\n"
         "  Jami: *{total_users}*\n"
         "  Faol (7 kun): *{active_7d}*\n"
@@ -366,7 +366,7 @@ T = {
         "🪙 *Coin*\n"
         "  Sarflangan: *{coins_spent}*\n\n"
         "🔔 Tasdiqlanmagan to'lovlar: *{pending}*\n\n"
-        "Quyidagi tugmadan birini tanlang:"
+        "👇 Pastdagi tugmalardan birini tanlang"
     ),
     "btn_admin_users": "👥 Userlar",
     "btn_admin_payments": "💳 To'lovlar",
@@ -501,7 +501,62 @@ T = {
     ),
 
     # ====================================================================
-    # Plan names (used in user-visible profile card)
+    # ADMIN — Block (NEW reply-button flow)
+    # ====================================================================
+    "admin_block_prompt": (
+        "🚫 *BLOKLASH / BLOKDAN CHIQARISH*\n\n"
+        "Foydalanuvchi ID yoki @username ni yozing:\n\n"
+        "Misol:\n"
+        "  `8392229980`\n"
+        "  `@username`\n\n"
+        "Agar user *bloklangan* bo'lsa — *blokdan chiqariladi*.\n"
+        "Aks holda — *bloklanadi*.\n\n"
+        "❌ Bekor qilish: `/cancel`"
+    ),
+    "admin_block_done": (
+        "{flag}\n\n"
+        "🆔 User: `{user_id}`\n"
+        "📛 Username: {username}"
+    ),
+
+    # ====================================================================
+    # ADMIN — Prices editor (NEW)
+    # ====================================================================
+    "admin_price_prompt": (
+        "💰 *{label}* o'zgartirilmoqda\n\n"
+        "Joriy qiymat: *{current}*\n\n"
+        "Yangi qiymatni yuboring (faqat raqam):\n"
+        "❌ Bekor qilish: `/cancel`"
+    ),
+    "admin_price_bad_value": "❌ Noto'g'ri qiymat. Faqat musbat son yuboring.",
+    "admin_price_done": (
+        "✅ *Saqlandi!*\n\n"
+        "{label}: *{value}*\n\n"
+        "O'zgartirish darhol kuchga kirdi."
+    ),
+
+    # ====================================================================
+    # ADMIN — Broadcast (UX text refresh)
+    # ====================================================================
+    "admin_broadcast_prompt": (
+        "📢 *XABAR YUBORISH*\n\n"
+        "Yubormoqchi bo'lgan matnni yozing.\n"
+        "Markdown qo'llab quvvatlanadi (*qalin*, _kursiv_, `kod`).\n\n"
+        "❌ Bekor qilish: `/cancel`"
+    ),
+    "admin_broadcast_confirm": (
+        "Tasdiqlash uchun `START` deb yozing.\n"
+        "Bekor qilish: `/cancel`"
+    ),
+    "admin_broadcast_started": "📤 0 / {total}",
+    "admin_broadcast_progress": "📤 {i} / {total}  (✅ {sent}  ❌ {failed})",
+    "admin_broadcast_done": (
+        "✅ *Yuborildi:* {sent}\n"
+        "❌ *Xato:* {failed}"
+    ),
+
+    # ====================================================================
+    # plan names
     # ====================================================================
     "plan_name_free": "Free",
     "plan_name_premium": "Premium",

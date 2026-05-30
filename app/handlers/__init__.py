@@ -2,9 +2,10 @@ from aiogram import Dispatcher
 
 from app.handlers import (
     start, search, profile, plans, bonus, referral, help as help_h, advisor,
-    coins, menu, saved,
+    coins, menu as user_menu, saved,
 )
 from app.handlers.admin import (
+    menu as admin_menu,           # reply-button router — must be first
     login as admin_login,
     users as admin_users,
     blocks as admin_blocks,
@@ -15,11 +16,13 @@ from app.handlers.admin import (
     settings as admin_settings,
     security as admin_security,
     payments as admin_payments,
+    prices as admin_prices,
 )
 
 
 def register_all_handlers(dp: Dispatcher) -> None:
-    # Admin first (specific commands like /admin_kirish)
+    # ---- Admin: menu router first so reply-button text matches win
+    admin_menu.register(dp)
     admin_login.register(dp)
     admin_users.register(dp)
     admin_blocks.register(dp)
@@ -30,9 +33,10 @@ def register_all_handlers(dp: Dispatcher) -> None:
     admin_settings.register(dp)
     admin_security.register(dp)
     admin_payments.register(dp)
+    admin_prices.register(dp)
 
-    # User handlers
-    menu.register(dp)        # /menu, /cancel — must be before others
+    # ---- User
+    user_menu.register(dp)        # /menu, /cancel
     start.register(dp)
     search.register(dp)
     profile.register(dp)

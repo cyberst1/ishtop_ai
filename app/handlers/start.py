@@ -17,6 +17,7 @@ from app.database.repositories import UsersRepo
 from app.keyboards import main_menu_kb
 from app.locales import T
 from app.services.referrals import ReferralService
+from app.services.runtime_config import runtime
 from app.services.subscriptions import SubscriptionService
 from app.utils.logger import logger
 
@@ -54,7 +55,7 @@ async def cmd_start(message: Message, state: FSMContext,
             username=user.username,
             full_name=user.full_name,
             referrer_id=referrer_id,
-            signup_gift=settings.signup_gift_coins,
+            signup_gift=runtime.signup_gift_coins,
         )
         if referrer_id:
             await ReferralService.reward(referrer_id, user.id)

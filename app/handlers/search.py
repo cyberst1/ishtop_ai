@@ -21,6 +21,7 @@ from app.locales import T
 from app.security.sanitizer import sanitize_query
 from app.services.coin_economy import CoinEconomy
 from app.services.job_renderer import render_job_card
+from app.services.runtime_config import runtime
 from app.services.search_aggregator import SearchAggregator
 from app.services.subscriptions import SubscriptionService
 from app.utils.logger import logger
@@ -59,9 +60,9 @@ async def do_search(message: Message, state: FSMContext) -> None:
     # 1. Daily limit (free plan)
     if not is_premium:
         used = await SearchesRepo.count_today(user_id)
-        if used >= settings.free_daily_searches:
+        if used >= runtime.free_daily_searches:
             await message.answer(
-                T["search_daily_limit"].format(limit=settings.free_daily_searches)
+                T["search_daily_limit"].format(limit=runtime.free_daily_searches)
             )
             await state.clear()
             return
@@ -85,10 +86,10 @@ async def do_search(message: Message, state: FSMContext) -> None:
     # 4. Pre-check balance
     if not is_premium:
         balance = await CoinEconomy.balance(user_id)
-        if balance < settings.search_cost:
+        if balance < runtime.search_cost:
             await message.answer(
                 T["search_insufficient_coins"].format(
-                    balance=round(balance, 2), cost=settings.search_cost
+                    balance=round(balance, 2), cost=runtime.search_cost
                 )
             )
             await state.clear()
@@ -128,20 +129,20 @@ async def do_search(message: Message, state: FSMContext) -> None:
     # 7. Charge 2 coin
     if not is_premium:
         ok, new_balance = await CoinEconomy.spend(
-            user_id, settings.search_cost,
+            user_id, runtime.search_cost,
             reason="search", related_id=query[:40],
         )
         if not ok:
             await message.answer(
                 T["search_insufficient_coins"].format(
-                    balance=round(new_balance, 2), cost=settings.search_cost
+                    balance=round(new_balance, 2), cost=runtime.search_cost
                 )
             )
             await state.clear()
             return
         await message.answer(
             T["search_charged"].format(
-                cost=settings.search_cost,
+                cost=runtime.search_cost,
                 balance=round(new_balance, 2),
                 count=len(jobs),
             )
