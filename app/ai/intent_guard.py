@@ -38,8 +38,9 @@ _BLOCKED_PATTERNS = [
         r"(salom|hi|hello|qalaysiz|qalay|kayfingiz)?[\s!?.,]*$",
     r"\b(suhbatlash|chatla|gaplash)\b",
     r"^\s*menga\s+(hazil|she[' ]?r|qo[' ]?shiq|hikoya)\s+ayt\b",
-    # explicit purchases (not job-related)
-    r"\b(sotib\s+ol(am(an|aymiz)|in)|buy\b|kupit)\b.*\b(iphone|phone|telefon|kitob|book|kompyuter|laptop|mashina|car|televizor|televizion|smartfon)\b",
+    # explicit purchases (consumer goods, not job-related)
+    r"\b(iphone|phone|telefon|smartfon|kitob|book|kompyuter|laptop|noutbuk|mashina|car|televizor|televizion|krossovka|tovar)\b.*\b(sotib\s+ol|buy|kupit|olaman|olamiz|olar|narxi|qancha|kerak\s+menga)\b",
+    r"\b(sotib\s+ol(am(an|aymiz)|in)|buy\b|kupit|narxi)\b.*\b(iphone|phone|telefon|smartfon|kitob|book|kompyuter|laptop|noutbuk|mashina|car|televizor|televizion|krossovka|tovar)\b",
     # generic curiosity
     r"\b(nima\s+bu|what\s+is|haqida\s+ayt|tavsiya\s+qil|recommend)\b",
     r"\b(qancha|narxi|cost|price)\b.*\b(iphone|telefon|mashina|kitob)\b",
@@ -103,17 +104,22 @@ class IntentGuard:
             if w in _ALLOWED_KEYWORDS or _stem(w) in _ALLOWED_KEYWORDS:
                 return IntentVerdict(True, "keyword_match")
 
-        # 3) LLM arbiter (strict — uncertain → reject)
+        # 3) LLM arbiter (lenient — when LLM is unavailable, we ALLOW and
+        # rely on the parser-level score filter to drop irrelevant results)
         raw = await AIClient.chat(INTENT_GUARD, t, temperature=0.0, max_tokens=120)
         if not raw:
-            return IntentVerdict(False, "no_career_keyword_no_llm")
+            # No LLM available → graceful default: allow.
+            # (a) The aggressive blocklist above already caught off-topic.
+            # (b) The aggregator's score filter drops irrelevant results.
+            return IntentVerdict(True, "no_llm_default_allow")
         try:
             data = json.loads(_extract_json(raw))
             allowed = bool(data.get("allowed", False))
             reason = str(data.get("reason", ""))
             return IntentVerdict(allowed, reason or "llm_decision")
         except (ValueError, TypeError):
-            return IntentVerdict(False, "parse_error")
+            # LLM gave nonsense — graceful default
+            return IntentVerdict(True, "parse_error_default_allow")
 
 
 def _extract_json(text: str) -> str:

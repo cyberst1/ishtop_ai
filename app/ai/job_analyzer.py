@@ -136,6 +136,51 @@ _SYNONYMS = {
     "o'qituvchi":  "teacher",
     "oqituvchi":   "teacher",
 
+    # === call center / support / office services ===
+    "call":          "call center",
+    "callcenter":    "call center",
+    "operator":      "operator",
+    "support":       "support",
+    "helpdesk":      "helpdesk",
+    "customer":      "customer support",
+    "konsultant":    "consultant",
+    "konsultatsiya": "consultant",
+    "kotib":         "secretary",
+    "kotiba":        "secretary",
+    "sekretar":      "secretary",
+    "yordamchi":     "assistant",
+    "tarjimon":      "translator",
+    "perevodchik":   "translator",
+    "rahbar":        "manager leader",
+    "direktor":      "director",
+
+    # === security / cleaning / maintenance ===
+    "qorovul":     "security guard",
+    "axrana":      "security guard",
+    "ohrana":      "security guard",
+    "guard":       "security guard",
+    "tozalovchi":  "cleaner",
+    "uborshchik":  "cleaner",
+    "cleaner":     "cleaner",
+
+    # === beauty / health ===
+    "sartarosh":   "barber",
+    "barber":      "barber",
+    "kosmetolog":  "cosmetologist",
+    "vrach":       "doctor",
+    "stomatolog":  "dentist",
+
+    # === media / creative ===
+    "fotograf":    "photographer",
+    "rassom":      "artist",
+    "muharrir":    "editor",
+    "video":       "video",
+    "montaj":      "video editor",
+    "kontent":     "content",
+    "blogger":     "blogger",
+    "kopyrayter":  "copywriter",
+    "copywriter":  "copywriter",
+
     # === levels ===
     "junior":      "junior",
     "middle":      "middle",
