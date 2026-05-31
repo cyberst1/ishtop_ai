@@ -17,7 +17,7 @@ from aiogram.types import Message
 from app.bot.states import AdminBlockSG, AdminBroadcastSG, AdminPriceSG
 from app.config import settings
 from app.database.repositories import (
-    AdminLogsRepo, BlocksRepo, BonusRepo, CoinPurchasesRepo, UsersRepo,
+    AdminLogsRepo, BlocksRepo, BonusRepo, UsersRepo,
 )
 from app.keyboards.admin import (
     BTN_BCAST, BTN_BLOCK, BTN_BONUS, BTN_LOGOUT, BTN_PRICES, BTN_STATS,
@@ -66,43 +66,12 @@ async def open_users(message: Message, state: FSMContext) -> None:
 # ---------------------------------------------------------------- OBUNA
 
 @router.message(F.text.startswith(BTN_SUBS))
-async def open_subscriptions(message: Message, state: FSMContext, bot: Bot) -> None:
+async def open_subscriptions(message: Message, state: FSMContext) -> None:
     if not _admin_only(message.from_user.id):
         return
     await state.clear()
-
-    # Always show 'Userga tarif ulash' action header
     from app.keyboards.admin import admin_subs_action_kb
     await message.answer(T["admin_subs_header"], reply_markup=admin_subs_action_kb())
-
-    rows = await CoinPurchasesRepo.list_pending(20)
-    if not rows:
-        await message.answer(T["admin_payments_empty"])
-        return
-
-    await message.answer(T["admin_payments_header"].format(count=len(rows)))
-
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-    for r in rows:
-        uname = f"@{r['username']}" if r["username"] else "—"
-        full_name = md_escape(r["full_name"] or "—")
-        price = f"{r['price']:,}".replace(",", " ")
-        body = (
-            f"💳 *So'rov #{r['id']}*\n\n"
-            f"👤 {full_name} · {md_escape(uname)}\n"
-            f"🆔 `{r['user_id']}`\n"
-            f"🪙 *{r['coins']} coin* uchun\n"
-            f"💵 *{price} so'm*\n"
-            f"📅 {r['created_at']}"
-        )
-        kb = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"adm:pay:ok:{r['id']}"),
-            InlineKeyboardButton(text="❌ Rad etish",  callback_data=f"adm:pay:no:{r['id']}"),
-        ]])
-        try:
-            await message.answer(body, reply_markup=kb)
-        except Exception:
-            pass
 
 
 # ---------------------------------------------------------------- TA'RIF NARXLARI

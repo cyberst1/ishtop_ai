@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     ai_base_url: str = "https://openrouter.ai/api/v1"
     ai_model: str = "deepseek/deepseek-v4-flash:free"
+    # Optional sticker shown while ISH TOP AI is "typing"
+    ai_typing_sticker_id: str = ""
     # Legacy NVIDIA aliases — still read from .env if present
     nvidia_api_key: str = ""
     nvidia_base_url: str = ""

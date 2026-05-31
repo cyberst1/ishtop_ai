@@ -75,7 +75,7 @@ T = {
     "btn_plans": "⭐ Tariflar",
     "btn_profile": "👤 Profil",
     "btn_help": "ℹ️ Yordam",
-    "btn_advisor": "🧠 AI Career Advisor",
+    "btn_advisor": "🧠 ISH TOP AI",
 
     # ====================================================================
     # Search flow
@@ -264,22 +264,19 @@ T = {
         "Quyidagi paketlardan birini tanlang.\n"
         "Tanlagandan so'ng to'lov ko'rsatmasi chiqadi."
     ),
-    "purchase_instructions": (
-        "✅ *So'rov yaratildi: #{id}*\n\n"
-        "🪙 Olish: *{coins} coin*\n"
-        "💵 To'lov: *{price} so'm*\n\n"
+    "coins_buy_instructions": (
+        "💳 *Coin sotib olish*\n\n"
+        "🪙 Paket: *{coins} coin*\n"
+        "💵 Narx: *{price} so'm*{bonus}\n\n"
         "📲 *Qadamlar:*\n"
         "1️⃣ Quyidagi kartaga *{price} so'm* o'tkazing:\n"
         "   `" + settings.payment_card_number + "`\n"
         "   *Karta egasi:* " + settings.payment_card_owner + "\n\n"
-        "2️⃣ To'lov chekini (skrinshot) admin'ga yuboring:\n"
-        f"   {SUPPORT}\n\n"
-        "3️⃣ Sarlavhada so'rov ID'ni yozing: `#{id}`\n\n"
-        "⏱ Admin tasdiqlagandan so'ng *{coins} coin* hisobingizga "
-        "darhol qo'shiladi va sizga xabar yuboriladi.\n\n"
-        "❌ Bekor qilish uchun pastdagi tugmani bosing."
+        "2️⃣ To'lov chekini (skrinshot) admin'ga yuboring\n"
+        "3️⃣ O'z ID raqamingizni yozing: `{user_id}`\n\n"
+        "Admin to'lovni tekshirib, coinlarni hisobingizga qo'shadi. 🎯\n\n"
+        "👇 Admin bilan bog'laning"
     ),
-    "purchase_cancelled": "❌ So'rov #{id} bekor qilindi.",
 
     # ====================================================================
     # Help
@@ -308,22 +305,45 @@ T = {
     ),
 
     # ====================================================================
-    # Advisor
+    # ISH TOP AI — assistant (general chat + career)
     # ====================================================================
+    "ai_prompt_premium": (
+        "🧠 *ISH TOP AI*\n\n"
+        "Salom! Men sizning shaxsiy AI yordamchingizman.\n"
+        "Istalgan savol bering — suhbat, karyera, ko'nikma, ish, texnologiya...\n\n"
+        "✍️ Savolingizni yozing.\n"
+        "❌ Chiqish: `/cancel`"
+    ),
+    "ai_prompt_trial": (
+        "🧠 *ISH TOP AI*\n\n"
+        "Salom! Men sizning shaxsiy AI yordamchingizman.\n"
+        "Istalgan mavzuda savol bering — suhbat, karyera, ish, texnologiya...\n\n"
+        "🎁 Sizda *{remaining} ta bepul savol* bor.\n"
+        "Cheksiz foydalanish uchun 💎 Premium+ oling.\n\n"
+        "✍️ Savolingizni yozing.\n"
+        "❌ Chiqish: `/cancel`"
+    ),
+    "ai_thinking": "✍️ Xabar yuborildi, ISH TOP AI javob yozmoqda...",
+    "ai_empty_query": "✍️ Iltimos, savolingizni matn ko'rinishida yozing.",
+    "ai_trial_remaining": "🎁 Sizda yana *{remaining} ta bepul savol* qoldi.",
+    "ai_trial_just_ended": (
+        "🎁 *Bepul savollaringiz tugadi.*\n\n"
+        "ISH TOP AI bilan cheksiz suhbatlashish uchun 💎 *Premium+* tarifini oling.\n"
+        "«⭐ Tariflar» bo'limiga kiring yoki /plans yuboring."
+    ),
+    "ai_trial_exhausted": (
+        "🎁 *Bepul AI savollaringiz tugagan.*\n\n"
+        "ISH TOP AI bilan cheksiz suhbatlashish uchun 💎 *Premium+* tarifini oling:\n"
+        "  ✅ Cheksiz AI suhbat\n"
+        "  ✅ Cheksiz ish qidiruv\n"
+        "  🎁 +30 coin sovg'a\n\n"
+        "«⭐ Tariflar» bo'limiga kiring yoki /plans yuboring."
+    ),
+    # legacy keys (kept so nothing breaks)
     "advisor_only_premium_plus": (
-        "💎 *AI Career Advisor* faqat *Premium+* foydalanuvchilar uchun.\n\n"
-        "⭐ *Tariflar* bo'limidan obunani faollashtiring.\n\n"
-        f"Yordam: {SUPPORT}"
+        "💎 Bu funksiya Premium+ uchun. «⭐ Tariflar» bo'limiga kiring."
     ),
-    "advisor_prompt": (
-        "🧠 *AI Career Advisor*\n\n"
-        "Karyera, ko'nikma, roadmap, maosh, intervyu yoki freelancing haqida so'rang.\n\n"
-        "Misol:\n"
-        "• «Backend developer bo'lish uchun nima o'rganay?»\n"
-        "• «Junior frontend maoshi qancha?»\n"
-        "• «Texnik intervyuga qanday tayyorgarlik ko'ray?»\n\n"
-        "❌ Bekor qilish: `/cancel`"
-    ),
+    "advisor_prompt": "🧠 *ISH TOP AI*\n\nSavolingizni yozing.",
 
     # ====================================================================
     # User notifications (sent by admin actions)
@@ -444,6 +464,24 @@ T = {
         "🆔 User: `{user_id}`\n"
         "🪙 O'zgartirish: *{delta}*\n"
         "💳 Yangi balans: *{balance}*"
+    ),
+    "admin_grant_coin_prompt": (
+        "🪙 *Userga coin qo'shish*\n\n"
+        "User ID yoki @username yuboring:\n\n"
+        "Misol: `8392229980`  yoki  `@username`\n\n"
+        "❌ Bekor qilish: `/cancel`"
+    ),
+    "admin_grant_coin_amount": (
+        "🪙 *User `{user_id}` uchun coin miqdorini yuboring*\n\n"
+        "Misol: `50`  yoki  `100`  (manfiy = ayirish)\n\n"
+        "❌ Bekor qilish: `/cancel`"
+    ),
+    "admin_coin_usage": (
+        "Tezkor buyruq:\n"
+        "  `/coin <user_id> <miqdor>`\n\n"
+        "Misol:\n"
+        "  `/coin 8392229980 50`\n"
+        "  `/coin 8392229980 -10`  (ayirish)"
     ),
 
     # ====================================================================

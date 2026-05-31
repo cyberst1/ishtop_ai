@@ -43,3 +43,8 @@ class AdminBlockSG(StatesGroup):
 
 class AdminGrantPlanSG(StatesGroup):
     user_input = State()
+
+
+class AdminGrantCoinSG(StatesGroup):
+    user_input = State()
+    amount = State()

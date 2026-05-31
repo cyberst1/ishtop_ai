@@ -15,7 +15,6 @@ from app.handlers.admin import (
     stats as admin_stats,
     settings as admin_settings,
     security as admin_security,
-    payments as admin_payments,
     prices as admin_prices,
     grant_plan as admin_grant_plan,
 )
@@ -33,7 +32,6 @@ def register_all_handlers(dp: Dispatcher) -> None:
     admin_stats.register(dp)
     admin_settings.register(dp)
     admin_security.register(dp)
-    admin_payments.register(dp)
     admin_prices.register(dp)
     admin_grant_plan.register(dp)
 

@@ -87,10 +87,12 @@ def admin_plan_pick_kb(user_id: int) -> InlineKeyboardMarkup:
 
 
 def admin_subs_action_kb() -> InlineKeyboardMarkup:
-    """Header action shown above the pending-payments list inside OBUNA."""
+    """Header actions inside OBUNA: grant a plan or add coins to a user."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Userga tarif ulash",
+        [InlineKeyboardButton(text="⭐ Userga tarif ulash",
                               callback_data="adm:grant_plan_start")],
+        [InlineKeyboardButton(text="🪙 Userga coin qo'shish",
+                              callback_data="adm:grant_coin_start")],
     ])
 
 
