@@ -1,14 +1,17 @@
 """
-Generic OpenAI-compatible AI client.
+Generic OpenAI-compatible AI client (default: OpenRouter).
 
-Default backend is OpenRouter (https://openrouter.ai/api/v1) with
-deepseek/deepseek-v4-flash:free, but any OpenAI-compatible endpoint works
-because we let `settings.effective_ai_*` decide.
+BULLETPROOF: `chat()` ALWAYS returns a string ("" on any failure).
+`diagnose()` is a debug helper that returns the REAL error/detail so an
+admin can see exactly why the AI is silent.
 
-BULLETPROOF: every entry point catches all exceptions. `chat()` ALWAYS returns
-a string (empty on any failure). Initialisation failures (e.g. version
-mismatch between openai and httpx) are logged once and the client is marked
-unusable so subsequent calls return "" without retrying.
+Notes for free OpenRouter models:
+  • Large reasoning models (e.g. Nemotron 120B) are SLOW and spend tokens on
+    hidden reasoning — if max_tokens is small the visible content can come back
+    empty. We therefore use a generous timeout and pull text from both the
+    `content` and (if present) `reasoning` fields.
+  • Free tiers are rate-limited (HTTP 429) and some require a privacy opt-in
+    (HTTP 404 'No endpoints found'). diagnose() surfaces these clearly.
 """
 from __future__ import annotations
 
@@ -16,15 +19,16 @@ import asyncio
 from typing import Optional
 
 from openai import AsyncOpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import settings
 from app.utils.logger import logger
 
+_TIMEOUT_SECONDS = 45  # big reasoning models can be slow on the free tier
+
 
 class AIClient:
     _client: Optional[AsyncOpenAI] = None
-    _disabled: bool = False  # set to True after a fatal init error
+    _disabled: bool = False
 
     @classmethod
     def get(cls) -> Optional[AsyncOpenAI]:
@@ -35,33 +39,42 @@ class AIClient:
             return None
         if cls._client is None:
             try:
-                default_headers = {
-                    "HTTP-Referer": f"https://t.me/{settings.bot_username}",
-                    "X-Title": "ISH TOP AI",
-                }
                 cls._client = AsyncOpenAI(
                     api_key=api_key,
                     base_url=settings.effective_ai_base_url,
-                    default_headers=default_headers,
+                    default_headers={
+                        "HTTP-Referer": f"https://t.me/{settings.bot_username}",
+                        "X-Title": "ISH TOP AI",
+                    },
                 )
             except Exception as e:
-                # e.g. openai/httpx version mismatch — never crash the bot
                 cls._disabled = True
-                logger.error(
-                    "ai.client.init_failed",
-                    extra={"err": str(e)[:200]},
-                )
+                logger.error("ai.client.init_failed", extra={"err": str(e)[:300]})
                 return None
         return cls._client
 
+    @staticmethod
+    def _extract_text(resp) -> str:
+        """Pull visible text from a completion, tolerating reasoning models."""
+        try:
+            choice = resp.choices[0]
+            msg = choice.message
+            content = (getattr(msg, "content", None) or "").strip()
+            if content:
+                return content
+            # some reasoning models expose text under .reasoning
+            reasoning = (getattr(msg, "reasoning", None) or "").strip()
+            return reasoning
+        except Exception:
+            return ""
+
     @classmethod
-    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4))
-    async def _do_chat(cls, system: str, user: str, *,
-                       temperature: float, max_tokens: int) -> str:
+    async def _create(cls, system: str, user: str, *, temperature: float,
+                      max_tokens: int):
         client = cls.get()
         if client is None:
-            return ""
-        resp = await asyncio.wait_for(
+            return None
+        return await asyncio.wait_for(
             client.chat.completions.create(
                 model=settings.effective_ai_model,
                 messages=[
@@ -71,22 +84,78 @@ class AIClient:
                 temperature=temperature,
                 max_tokens=max_tokens,
             ),
-            timeout=20,
+            timeout=_TIMEOUT_SECONDS,
         )
-        return (resp.choices[0].message.content or "").strip()
 
     @classmethod
     async def chat(cls, system: str, user: str, *, temperature: float = 0.2,
-                   max_tokens: int = 600) -> str:
+                   max_tokens: int = 900) -> str:
         """Public entry. NEVER raises — returns "" on any failure."""
-        try:
-            return await cls._do_chat(system, user, temperature=temperature,
-                                      max_tokens=max_tokens)
-        except asyncio.TimeoutError:
-            logger.warning("ai.timeout", extra={"model": settings.effective_ai_model})
-        except Exception as e:
-            logger.warning(
-                "ai.error",
-                extra={"err": str(e)[:200], "model": settings.effective_ai_model},
-            )
+        for attempt in (1, 2):
+            try:
+                resp = await cls._create(system, user, temperature=temperature,
+                                         max_tokens=max_tokens)
+                if resp is None:
+                    return ""
+                text = cls._extract_text(resp)
+                if text:
+                    return text
+                logger.warning("ai.empty_response",
+                               extra={"model": settings.effective_ai_model,
+                                      "attempt": attempt})
+            except asyncio.TimeoutError:
+                logger.warning("ai.timeout",
+                               extra={"model": settings.effective_ai_model,
+                                      "attempt": attempt})
+            except Exception as e:
+                logger.warning("ai.error",
+                               extra={"err": str(e)[:300],
+                                      "model": settings.effective_ai_model,
+                                      "attempt": attempt})
+                break  # don't retry hard errors (auth/model/quota)
         return ""
+
+    @classmethod
+    async def diagnose(cls) -> tuple[bool, str]:
+        """
+        Run a minimal test call and return (ok, human-readable detail).
+        Used by the admin /ai_test command.
+        """
+        if not settings.effective_ai_api_key:
+            return False, "AI_API_KEY sozlanmagan (.env faylida bo'sh)."
+        client = cls.get()
+        if client is None:
+            return False, "AI klient ishga tushmadi (kutubxona/versiya muammosi)."
+        try:
+            resp = await cls._create(
+                "Sen yordamchisan. Faqat 'OK' deb javob ber.",
+                "test", temperature=0.0, max_tokens=20,
+            )
+            text = cls._extract_text(resp)
+            if text:
+                return True, f"✅ Ishlayapti. Model javobi: {text[:80]!r}"
+            return False, (
+                "Model bo'sh javob qaytardi. Sabab: ehtimol reasoning modeli "
+                "max_tokens'ni tugatdi yoki model vaqtincha band. "
+                "Tezroq model tavsiya etiladi (masalan deepseek/deepseek-v4-flash:free)."
+            )
+        except asyncio.TimeoutError:
+            return False, (
+                f"⏱ Timeout ({_TIMEOUT_SECONDS}s). Model juda sekin — "
+                "tezroq model tanlang (deepseek/deepseek-v4-flash:free)."
+            )
+        except Exception as e:
+            detail = str(e)
+            # Make common OpenRouter errors human-friendly
+            low = detail.lower()
+            if "401" in detail or "auth" in low or "api key" in low:
+                hint = "API kalit noto'g'ri yoki eskirgan."
+            elif "404" in detail or "no endpoints" in low:
+                hint = ("Model topilmadi yoki ruxsat yo'q. OpenRouter Privacy "
+                        "sozlamalarida free modellarga ruxsat bering yoki "
+                        "boshqa model tanlang.")
+            elif "429" in detail or "rate" in low or "quota" in low:
+                hint = "Limit tugagan (free tier kunlik cheklov). Keyinroq urinib ko'ring."
+            else:
+                hint = "Noma'lum xato."
+            return False, f"❌ {hint}\n\nTexnik: {detail[:300]}"
