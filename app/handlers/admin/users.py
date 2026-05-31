@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 from aiogram import Dispatcher, F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types import CallbackQuery, Message
 
 from app.config import settings
@@ -57,15 +57,28 @@ async def show_users_help(cb: CallbackQuery) -> None:
     await cb.answer()
 
 
-# Plain text search — only fires if the message looks like a user ID or @username
-# AND the sender is an authenticated admin.
+# Plain text search — only fires when:
+#   • the admin has NO active FSM flow (StateFilter(None)), so it never steals
+#     messages meant for AI chat (AdvisorSG), search input (SearchSG), etc.
+#   • the sender is an authenticated admin
+#   • the text looks like a user ID or @username
+# A numeric ID is treated as a strong signal; a bare word (e.g. "salom") is
+# only treated as a username search when prefixed with "@".
 def _looks_like_user_query(text: str) -> bool:
     text = (text or "").strip()
-    return bool(_USER_ID_RE.match(text) or _USERNAME_RE.match(text))
+    if _USER_ID_RE.match(text):
+        return True
+    # require explicit @ for username search to avoid hijacking normal words
+    return text.startswith("@") and bool(_USERNAME_RE.match(text))
 
 
-@router.message(F.text.func(_looks_like_user_query))
+@router.message(StateFilter(None), F.text.func(_looks_like_user_query))
 async def text_search_user(message: Message) -> None:
+    # Hard gate: admins only, with an active session. For everyone else this
+    # handler must NOT consume the message — but since it already matched the
+    # filter, we can't "un-handle" it. The StateFilter(None) + admin-only design
+    # means a non-admin who happens to send a bare numeric ID at the main menu
+    # simply gets no reply, which is acceptable.
     if message.from_user.id not in settings.admin_ids:
         return
     if not _guard(message.from_user.id):
