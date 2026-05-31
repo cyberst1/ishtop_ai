@@ -142,6 +142,7 @@ T = {
     # ====================================================================
     "btn_job_save": "❤️ Saqlash",
     "btn_job_next": "⏭ Keyingi",
+    "btn_new_search": "🔄 Yangi qidiruv",
     # Legacy keys
     "btn_job_details": "📄 Batafsil",
     "btn_job_contact": "📞 Aloqa",

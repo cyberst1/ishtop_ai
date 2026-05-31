@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
+from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from app.keyboards import plans_kb
@@ -26,6 +27,7 @@ def _build_plans_text() -> str:
 
 
 @router.message(F.text == T["btn_plans"])
+@router.message(Command("plans"))
 @router.callback_query(F.data == "profile:plans")
 async def show_plans(event) -> None:
     text = _build_plans_text()

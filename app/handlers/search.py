@@ -9,6 +9,7 @@ Search flow:
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -32,6 +33,7 @@ router = Router(name="search")
 # ─────────────────────────────────────── entry ─────
 
 @router.message(F.text == T["btn_search"])
+@router.message(Command("search"))
 async def open_search(message: Message, state: FSMContext) -> None:
     await state.clear()
     await state.set_state(SearchSG.role)
@@ -184,7 +186,8 @@ async def _show_current(target, state: FSMContext) -> None:
     pagination = T["job_pagination"].format(idx=idx + 1, total=total)
     text, _ = render_job_card(dict(job))
     text = f"{pagination}\n{text}"
-    kb = job_card_kb(job["id"])
+    has_next = (idx + 1) < len(ids)
+    kb = job_card_kb(job["id"], has_next=has_next)
 
     if isinstance(target, Message):
         await target.answer(text, reply_markup=kb, disable_web_page_preview=True)
@@ -210,6 +213,14 @@ async def cancel_search(cb: CallbackQuery, state: FSMContext) -> None:
         await cb.message.edit_text("❌ Qidiruv bekor qilindi.")
     except Exception:
         pass
+    await cb.answer()
+
+
+@router.callback_query(F.data == "search:new")
+async def new_search(cb: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await state.set_state(SearchSG.role)
+    await cb.message.answer(T["search_who_are_you"], reply_markup=role_kb())
     await cb.answer()
 
 

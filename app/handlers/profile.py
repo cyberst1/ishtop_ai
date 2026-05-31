@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
+from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from app.database.repositories import JobsRepo, SearchesRepo, UsersRepo
@@ -44,6 +45,7 @@ async def _send_profile_card(target) -> None:
 
 
 @router.message(F.text == T["btn_profile"])
+@router.message(Command("profile"))
 async def show_profile(message: Message) -> None:
     await _send_profile_card(message)
 
