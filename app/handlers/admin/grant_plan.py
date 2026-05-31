@@ -23,6 +23,7 @@ from app.keyboards.admin import admin_plan_pick_kb
 from app.locales import T
 from app.security.markdown import md_escape
 from app.security.sessions import AdminSessions
+from app.services.runtime_config import runtime
 from app.services.subscriptions import SubscriptionService
 
 router = Router(name="admin_grant_plan")
@@ -73,7 +74,7 @@ async def grant_pick_user(message: Message, state: FSMContext) -> None:
     await message.answer(
         T["admin_grant_plan_pick"].format(
             user_id=user["user_id"],
-            username=("@" + user["username"]) if user["username"] else "—",
+            username=md_escape(("@" + user["username"]) if user["username"] else "—"),
             full_name=md_escape(user["full_name"] or "—"),
             current_plan=_PLAN_LABEL.get(user["plan"], user["plan"]),
         ),
@@ -105,25 +106,32 @@ async def grant_plan_command(message: Message, bot: Bot) -> None:
         await message.answer(T["admin_user_not_found"])
         return
 
-    days = 30 if plan != "free" else 365 * 10
-    await SubscriptionService.activate(uid, plan, days=days, price=0,
-                                       payment_id=f"admin:{message.from_user.id}")
+    bonus = await SubscriptionService.activate(uid, plan, price=0,
+                                               payment_id=f"admin:{message.from_user.id}")
     await AdminLogsRepo.log(message.from_user.id, "grant_plan",
                             target_user=uid, payload=plan)
     await message.answer(
         T["admin_plan_granted"].format(
-            user_id=uid, plan=_PLAN_LABEL.get(plan, plan), days=days,
+            user_id=uid, plan=_PLAN_LABEL.get(plan, plan),
+            days=int(runtime.plan_duration_days) if plan != "free" else "∞",
+            bonus=_bonus_line(bonus),
         )
     )
     try:
         await bot.send_message(
             uid,
             T["user_plan_granted_notify"].format(
-                plan=_PLAN_LABEL.get(plan, plan), days=days,
+                plan=_PLAN_LABEL.get(plan, plan),
+                days=int(runtime.plan_duration_days) if plan != "free" else "∞",
+                bonus=_bonus_line(bonus),
             ),
         )
     except Exception:
         pass
+
+
+def _bonus_line(bonus: float) -> str:
+    return f"\n🎁 Bonus: +{int(bonus)} coin" if bonus and bonus > 0 else ""
 
 
 def register(dp: Dispatcher) -> None:

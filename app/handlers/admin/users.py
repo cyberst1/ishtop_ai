@@ -22,6 +22,7 @@ from app.keyboards.admin import admin_back_kb, admin_plan_pick_kb, admin_user_ca
 from app.locales import T
 from app.security.markdown import md_escape
 from app.security.sessions import AdminSessions
+from app.services.runtime_config import runtime
 from app.services.subscriptions import SubscriptionService
 
 router = Router(name="admin_users")
@@ -103,7 +104,7 @@ async def _send_user_card(target, user) -> None:
     saved = await JobsRepo.saved_count(user["user_id"])
     text = T["admin_user_card"].format(
         user_id=user["user_id"],
-        username=("@" + user["username"]) if user["username"] else "—",
+        username=md_escape(("@" + user["username"]) if user["username"] else "—"),
         full_name=md_escape(user["full_name"] or "—"),
         plan=_PLAN_LABEL.get(user["plan"], user["plan"]),
         coins=round(user["coin_balance"], 2),
@@ -145,15 +146,17 @@ async def grant_plan(cb: CallbackQuery) -> None:
     parts = cb.data.split(":")
     uid = int(parts[3])
     plan = parts[4]
-    days = 30 if plan != "free" else 365 * 10
-    await SubscriptionService.activate(uid, plan, days=days, price=0,
-                                       payment_id=f"admin:{cb.from_user.id}")
+    bonus = await SubscriptionService.activate(uid, plan, price=0,
+                                               payment_id=f"admin:{cb.from_user.id}")
+    days = int(runtime.plan_duration_days) if plan != "free" else "∞"
+    bonus_line = f"\n🎁 Bonus: +{int(bonus)} coin" if bonus and bonus > 0 else ""
     await AdminLogsRepo.log(cb.from_user.id, "grant_plan",
                             target_user=uid, payload=plan)
     try:
         await cb.message.edit_text(
             T["admin_plan_granted"].format(
-                user_id=uid, plan=_PLAN_LABEL.get(plan, plan), days=days,
+                user_id=uid, plan=_PLAN_LABEL.get(plan, plan),
+                days=days, bonus=bonus_line,
             ),
             reply_markup=admin_back_kb(),
         )
@@ -163,7 +166,7 @@ async def grant_plan(cb: CallbackQuery) -> None:
         await cb.bot.send_message(
             uid,
             T["user_plan_granted_notify"].format(
-                plan=_PLAN_LABEL.get(plan, plan), days=days,
+                plan=_PLAN_LABEL.get(plan, plan), days=days, bonus=bonus_line,
             ),
         )
     except Exception:

@@ -193,17 +193,18 @@ T = {
         "  📅 Kuniga 3 ta qidiruv"
     ),
     "plan_premium": (
-        "⭐ *PREMIUM — {price} so'm/oy*\n"
+        "⭐ *PREMIUM — {price} so'm / 14 kun*\n"
         "  ✅ Cheksiz qidiruv (coinsiz)\n"
         "  ✅ AI search\n"
         "  ✅ Bog'lanish bepul"
     ),
     "plan_premium_plus": (
-        "💎 *PREMIUM+ — {price} so'm/oy*\n"
+        "💎 *PREMIUM+ — {price} so'm / 14 kun*\n"
         "  ✅ Cheksiz qidiruv (coinsiz)\n"
         "  ✅ AI search\n"
         "  ✅ Bog'lanish bepul\n"
-        "  ✅ AI Career Advisor"
+        "  ✅ AI Career Advisor\n"
+        "  🎁 *+30 coin sovg'a*"
     ),
     "btn_buy_premium": "💳 Premium sotib olish",
     "btn_buy_premium_plus": "💎 Premium+ sotib olish",
@@ -333,7 +334,7 @@ T = {
     ),
     "user_plan_granted_notify": (
         "🎉 *Sizga {plan} tarifi berildi!*\n\n"
-        "⏱ Amal qilish muddati: *{days} kun*\n"
+        "⏱ Amal qilish muddati: *{days} kun*{bonus}\n\n"
         "Ish izlashda omad! 🎯"
     ),
 
@@ -415,14 +416,14 @@ T = {
     "admin_pick_plan": (
         "⭐ *User `{user_id}` uchun tarif tanlang:*\n\n"
         "• 🆓 Free — bepul, kuniga 3 qidiruv\n"
-        "• ⭐ Premium — 30 kunga\n"
-        "• 💎 Premium+ — 30 kunga (AI Advisor bilan)"
+        "• ⭐ Premium — 14 kunga\n"
+        "• 💎 Premium+ — 14 kunga (AI Advisor + 30 coin)"
     ),
     "admin_plan_granted": (
         "✅ *Tarif berildi!*\n\n"
         "🆔 User: `{user_id}`\n"
         "⭐ Tarif: *{plan}*\n"
-        "⏱ Muddat: *{days} kun*\n\n"
+        "⏱ Muddat: *{days} kun*{bonus}\n\n"
         "Foydalanuvchiga avtomatik xabar yuborildi."
     ),
 
@@ -542,7 +543,8 @@ T = {
         "👤 Ism: {full_name}\n"
         "📛 Username: {username}\n"
         "⭐ Joriy tarif: *{current_plan}*\n\n"
-        "Quyidagi tariflardan birini tanlang 👇"
+        "Quyidagi tariflardan birini tanlang 👇\n"
+        "(Premium / Premium+ — 14 kunga)"
     ),
     "admin_tarif_usage": (
         "Tezkor buyruq:\n"

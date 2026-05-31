@@ -24,26 +24,30 @@ from app.database.repositories import AppSettingsRepo
 
 # Schema of editable keys — defaults pulled from `settings`
 EDITABLE_KEYS: dict[str, type] = {
-    "premium_price":         int,
-    "premium_plus_price":    int,
-    "search_cost":           float,
-    "signup_gift_coins":     float,
-    "free_daily_searches":   int,
-    "bonus_channel_reward":  float,
-    "referral_first_bonus":  float,
-    "referral_next_bonus":   float,
+    "premium_price":            int,
+    "premium_plus_price":       int,
+    "premium_plus_bonus_coins": float,
+    "plan_duration_days":       int,
+    "search_cost":              float,
+    "signup_gift_coins":        float,
+    "free_daily_searches":      int,
+    "bonus_channel_reward":     float,
+    "referral_first_bonus":     float,
+    "referral_next_bonus":      float,
 }
 
 # Human-readable labels (Uzbek) for the admin price editor
 LABELS: dict[str, str] = {
-    "premium_price":         "⭐ Premium narxi (so'm)",
-    "premium_plus_price":    "💎 Premium+ narxi (so'm)",
-    "search_cost":           "🪙 Qidiruv narxi (coin)",
-    "signup_gift_coins":     "🎁 Ro'yxatdan o'tish sovg'asi (coin)",
-    "free_daily_searches":   "📅 Free kunlik limit (qidiruv)",
-    "bonus_channel_reward":  "🎁 Bonus kanal mukofoti (coin)",
-    "referral_first_bonus":  "👥 1-do'st mukofoti (coin)",
-    "referral_next_bonus":   "👥 Keyingi do'stlar mukofoti (coin)",
+    "premium_price":            "⭐ Premium narxi (so'm)",
+    "premium_plus_price":       "💎 Premium+ narxi (so'm)",
+    "premium_plus_bonus_coins": "🎁 Premium+ bonus coin",
+    "plan_duration_days":       "📅 Tarif muddati (kun)",
+    "search_cost":              "🪙 Qidiruv narxi (coin)",
+    "signup_gift_coins":        "🎁 Ro'yxatdan o'tish sovg'asi (coin)",
+    "free_daily_searches":      "📅 Free kunlik limit (qidiruv)",
+    "bonus_channel_reward":     "🎁 Bonus kanal mukofoti (coin)",
+    "referral_first_bonus":     "👥 1-do'st mukofoti (coin)",
+    "referral_next_bonus":      "👥 Keyingi do'stlar mukofoti (coin)",
 }
 
 

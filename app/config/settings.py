@@ -84,8 +84,10 @@ class Settings(BaseSettings):
     free_daily_searches: int = 3
 
     # ---- Pricing (so'm) ----
-    premium_price: int = 9_000
-    premium_plus_price: int = 19_990
+    premium_price: int = 6_000
+    premium_plus_price: int = 14_900
+    premium_plus_bonus_coins: float = 30.0   # bonus coins granted with Premium+
+    plan_duration_days: int = 14             # all paid plans last 14 days
 
     # ---- Branding / Support ----
     support_username: str = "cybst_academy"
