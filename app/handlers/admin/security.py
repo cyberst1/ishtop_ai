@@ -20,17 +20,19 @@ async def ai_test(message: Message) -> None:
     if not AdminSessions.is_valid(message.from_user.id):
         await message.answer(T["admin_session_expired"])
         return
-    await message.answer("🔍 AI sinovdan o'tkazilmoqda...")
+    await message.answer("🔍 AI sinovdan o'tkazilmoqda... (30-40 soniya)")
     ok, detail = await AIClient.diagnose()
     flag = "✅" if ok else "❌"
-    await message.answer(
-        f"{flag} *AI diagnostika*\n\n"
+    # Plain text (parse_mode=None) — model names contain '/' ':' '-' and the
+    # detail may contain arbitrary error text; avoid any Markdown breakage.
+    body = (
+        f"{flag} AI DIAGNOSTIKA\n\n"
         f"🔑 Kalit: {'bor' if settings.effective_ai_api_key else 'YO‘Q'}\n"
-        f"🌐 URL: `{settings.effective_ai_base_url}`\n"
-        f"🤖 Model: `{settings.effective_ai_model}`\n\n"
-        f"{md_escape(detail)}",
-        parse_mode="Markdown",
+        f"🌐 URL: {settings.effective_ai_base_url}\n"
+        f"🤖 Asosiy model: {settings.effective_ai_model}\n\n"
+        f"{detail}"
     )
+    await message.answer(body, parse_mode=None)
 
 
 @router.callback_query(F.data == "adm:security")

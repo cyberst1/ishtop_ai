@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     ai_base_url: str = "https://openrouter.ai/api/v1"
     ai_model: str = "deepseek/deepseek-v4-flash:free"
+    # Comma-separated fallback models tried (in order) when the primary model
+    # returns empty / times out / errors. Keeps the AI working even if the
+    # configured model is slow (e.g. a big reasoning model) or rate-limited.
+    ai_fallback_models: str = (
+        "deepseek/deepseek-v4-flash:free,"
+        "meta-llama/llama-3.3-70b-instruct:free,"
+        "google/gemini-2.0-flash-exp:free"
+    )
     # Optional sticker shown while ISH TOP AI is "typing"
     ai_typing_sticker_id: str = ""
     # Legacy NVIDIA aliases — still read from .env if present
@@ -148,6 +156,17 @@ class Settings(BaseSettings):
     @property
     def effective_ai_model(self) -> str:
         return self.ai_model or self.nvidia_model or "deepseek/deepseek-v4-flash:free"
+
+    @property
+    def ai_model_chain(self) -> List[str]:
+        """Primary model first, then unique fallbacks (excluding the primary)."""
+        primary = self.effective_ai_model
+        chain = [primary]
+        for m in (self.ai_fallback_models or "").split(","):
+            m = m.strip()
+            if m and m not in chain:
+                chain.append(m)
+        return chain
 
     @property
     def db_path(self) -> Path:

@@ -1,17 +1,19 @@
 """
-Generic OpenAI-compatible AI client (default: OpenRouter).
+Generic OpenAI-compatible AI client (default: OpenRouter) with auto-fallback.
 
-BULLETPROOF: `chat()` ALWAYS returns a string ("" on any failure).
-`diagnose()` is a debug helper that returns the REAL error/detail so an
-admin can see exactly why the AI is silent.
+Key behaviour:
+  • chat() tries each model in settings.ai_model_chain (primary first, then
+    fallbacks) until one returns non-empty text. This keeps the AI working
+    even if the configured model is slow (big reasoning model), rate-limited,
+    or returns empty content.
+  • chat() ALWAYS returns a string ("" only if every model fails).
+  • diagnose() reports per-model results so an admin can see exactly what
+    happened with /ai_test.
 
-Notes for free OpenRouter models:
-  • Large reasoning models (e.g. Nemotron 120B) are SLOW and spend tokens on
-    hidden reasoning — if max_tokens is small the visible content can come back
-    empty. We therefore use a generous timeout and pull text from both the
-    `content` and (if present) `reasoning` fields.
-  • Free tiers are rate-limited (HTTP 429) and some require a privacy opt-in
-    (HTTP 404 'No endpoints found'). diagnose() surfaces these clearly.
+Free OpenRouter notes:
+  • Large reasoning models (e.g. Nemotron 120B) are slow and often spend the
+    token budget on hidden reasoning → empty visible content. The fallback
+    chain transparently switches to a fast model in that case.
 """
 from __future__ import annotations
 
@@ -23,7 +25,7 @@ from openai import AsyncOpenAI
 from app.config import settings
 from app.utils.logger import logger
 
-_TIMEOUT_SECONDS = 45  # big reasoning models can be slow on the free tier
+_TIMEOUT_SECONDS = 40  # per-model timeout
 
 
 class AIClient:
@@ -55,28 +57,24 @@ class AIClient:
 
     @staticmethod
     def _extract_text(resp) -> str:
-        """Pull visible text from a completion, tolerating reasoning models."""
         try:
-            choice = resp.choices[0]
-            msg = choice.message
+            msg = resp.choices[0].message
             content = (getattr(msg, "content", None) or "").strip()
             if content:
                 return content
-            # some reasoning models expose text under .reasoning
-            reasoning = (getattr(msg, "reasoning", None) or "").strip()
-            return reasoning
+            return (getattr(msg, "reasoning", None) or "").strip()
         except Exception:
             return ""
 
     @classmethod
-    async def _create(cls, system: str, user: str, *, temperature: float,
-                      max_tokens: int):
+    async def _call_model(cls, model: str, system: str, user: str, *,
+                          temperature: float, max_tokens: int) -> str:
         client = cls.get()
         if client is None:
-            return None
-        return await asyncio.wait_for(
+            return ""
+        resp = await asyncio.wait_for(
             client.chat.completions.create(
-                model=settings.effective_ai_model,
+                model=model,
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
@@ -86,76 +84,67 @@ class AIClient:
             ),
             timeout=_TIMEOUT_SECONDS,
         )
+        return cls._extract_text(resp)
 
     @classmethod
-    async def chat(cls, system: str, user: str, *, temperature: float = 0.2,
+    async def chat(cls, system: str, user: str, *, temperature: float = 0.4,
                    max_tokens: int = 900) -> str:
-        """Public entry. NEVER raises — returns "" on any failure."""
-        for attempt in (1, 2):
+        """Try each model in the chain until one answers. Never raises."""
+        if not settings.effective_ai_api_key:
+            return ""
+        for model in settings.ai_model_chain:
             try:
-                resp = await cls._create(system, user, temperature=temperature,
-                                         max_tokens=max_tokens)
-                if resp is None:
-                    return ""
-                text = cls._extract_text(resp)
+                text = await cls._call_model(model, system, user,
+                                             temperature=temperature,
+                                             max_tokens=max_tokens)
                 if text:
                     return text
-                logger.warning("ai.empty_response",
-                               extra={"model": settings.effective_ai_model,
-                                      "attempt": attempt})
+                logger.warning("ai.empty_response", extra={"model": model})
             except asyncio.TimeoutError:
-                logger.warning("ai.timeout",
-                               extra={"model": settings.effective_ai_model,
-                                      "attempt": attempt})
+                logger.warning("ai.timeout", extra={"model": model})
             except Exception as e:
-                logger.warning("ai.error",
-                               extra={"err": str(e)[:300],
-                                      "model": settings.effective_ai_model,
-                                      "attempt": attempt})
-                break  # don't retry hard errors (auth/model/quota)
+                logger.warning("ai.error", extra={"model": model, "err": str(e)[:300]})
+            # try next model in the chain
         return ""
 
     @classmethod
     async def diagnose(cls) -> tuple[bool, str]:
-        """
-        Run a minimal test call and return (ok, human-readable detail).
-        Used by the admin /ai_test command.
-        """
+        """Test every model in the chain; report per-model results (Uzbek)."""
         if not settings.effective_ai_api_key:
             return False, "AI_API_KEY sozlanmagan (.env faylida bo'sh)."
-        client = cls.get()
-        if client is None:
+        if cls.get() is None:
             return False, "AI klient ishga tushmadi (kutubxona/versiya muammosi)."
-        try:
-            resp = await cls._create(
-                "Sen yordamchisan. Faqat 'OK' deb javob ber.",
-                "test", temperature=0.0, max_tokens=20,
-            )
-            text = cls._extract_text(resp)
-            if text:
-                return True, f"✅ Ishlayapti. Model javobi: {text[:80]!r}"
-            return False, (
-                "Model bo'sh javob qaytardi. Sabab: ehtimol reasoning modeli "
-                "max_tokens'ni tugatdi yoki model vaqtincha band. "
-                "Tezroq model tavsiya etiladi (masalan deepseek/deepseek-v4-flash:free)."
-            )
-        except asyncio.TimeoutError:
-            return False, (
-                f"⏱ Timeout ({_TIMEOUT_SECONDS}s). Model juda sekin — "
-                "tezroq model tanlang (deepseek/deepseek-v4-flash:free)."
-            )
-        except Exception as e:
-            detail = str(e)
-            # Make common OpenRouter errors human-friendly
-            low = detail.lower()
-            if "401" in detail or "auth" in low or "api key" in low:
-                hint = "API kalit noto'g'ri yoki eskirgan."
-            elif "404" in detail or "no endpoints" in low:
-                hint = ("Model topilmadi yoki ruxsat yo'q. OpenRouter Privacy "
-                        "sozlamalarida free modellarga ruxsat bering yoki "
-                        "boshqa model tanlang.")
-            elif "429" in detail or "rate" in low or "quota" in low:
-                hint = "Limit tugagan (free tier kunlik cheklov). Keyinroq urinib ko'ring."
-            else:
-                hint = "Noma'lum xato."
-            return False, f"❌ {hint}\n\nTexnik: {detail[:300]}"
+
+        lines = []
+        any_ok = False
+        for model in settings.ai_model_chain:
+            try:
+                text = await cls._call_model(
+                    model, "Sen yordamchisan. Faqat 'OK' deb javob ber.",
+                    "test", temperature=0.0, max_tokens=20,
+                )
+                if text:
+                    any_ok = True
+                    lines.append(f"✅ `{model}` → {text[:40]!r}")
+                else:
+                    lines.append(f"⚠️ `{model}` → bo'sh javob (reasoning/limit)")
+            except asyncio.TimeoutError:
+                lines.append(f"⏱ `{model}` → timeout ({_TIMEOUT_SECONDS}s, sekin)")
+            except Exception as e:
+                lines.append(f"❌ `{model}` → {_classify(str(e))}")
+
+        header = ("✅ AI ishlayapti (kamida bitta model javob berdi)."
+                  if any_ok else
+                  "❌ Hech bir model javob bermadi.")
+        return any_ok, header + "\n\n" + "\n".join(lines)
+
+
+def _classify(detail: str) -> str:
+    low = detail.lower()
+    if "401" in detail or "auth" in low or "user not found" in low or "api key" in low:
+        return "401 — kalit noto'g'ri/eskirgan"
+    if "404" in detail or "no endpoints" in low:
+        return "404 — model topilmadi / Privacy ruxsati kerak"
+    if "429" in detail or "rate" in low or "quota" in low:
+        return "429 — limit tugagan (free tier)"
+    return f"xato: {detail[:120]}"
