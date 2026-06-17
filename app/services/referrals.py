@@ -5,6 +5,7 @@ from app.config import settings
 from app.database.repositories import ReferralsRepo, UsersRepo
 from app.security.abuse import AbuseDetector
 from app.services.coin_economy import CoinEconomy
+from app.services.runtime_config import runtime
 from app.utils.logger import logger
 
 
@@ -22,7 +23,7 @@ class ReferralService:
             return False
 
         prior = await UsersRepo.count_referrals(referrer_id)
-        coins = settings.referral_first_bonus if prior == 0 else settings.referral_next_bonus
+        coins = runtime.referral_first_bonus if prior == 0 else runtime.referral_next_bonus
         await ReferralsRepo.add(referrer_id, referred_id, coins)
         await CoinEconomy.credit(referrer_id, coins, reason="referral",
                                  related_id=str(referred_id))

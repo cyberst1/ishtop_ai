@@ -1,4 +1,4 @@
-"""/admin_kirish — bcrypt password + session."""
+"""/admin_kirish — bcrypt password + session, then ReplyKeyboard panel."""
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
@@ -8,10 +8,14 @@ from aiogram.types import CallbackQuery, Message
 
 from app.bot.states import AdminLoginSG
 from app.config import settings
-from app.database.repositories import AdminLogsRepo
-from app.keyboards import admin_main_kb
+from app.database.engine import get_db
+from app.database.repositories import (
+    AdminLogsRepo, CoinPurchasesRepo, SearchesRepo,
+    SubscriptionsRepo, UsersRepo,
+)
+from app.keyboards.admin import admin_reply_kb, remove_kb
 from app.locales import T
-from app.security.passwords import verify_password
+from app.security.passwords import verify_admin
 from app.security.sessions import AdminSessions
 from app.utils.logger import logger
 
@@ -22,12 +26,65 @@ def _is_admin(user_id: int) -> bool:
     return user_id in settings.admin_ids
 
 
+# ---------- dashboard ----------
+
+async def _build_dashboard() -> tuple[str, int]:
+    """Return (formatted_dashboard_text, pending_payments_count)."""
+    db = get_db()
+    total_users     = await UsersRepo.total_count()
+    active_7d       = await UsersRepo.active_count(7)
+    premium_count   = await SubscriptionsRepo.count_premium()
+    pending_pay     = await CoinPurchasesRepo.count_pending()
+    searches_total  = await SearchesRepo.total()
+
+    today_searches = (await db.fetchone(
+        "SELECT COUNT(*) AS c FROM searches WHERE date(created_at) = date('now')"
+    ))["c"]
+    today_signups = (await db.fetchone(
+        "SELECT COUNT(*) AS c FROM users WHERE date(created_at) = date('now')"
+    ))["c"]
+    today_revenue = (await db.fetchone(
+        """SELECT COALESCE(SUM(price), 0) AS s FROM coin_purchases
+           WHERE status = 'confirmed' AND date(confirmed_at) = date('now')"""
+    ))["s"]
+    total_revenue = await CoinPurchasesRepo.total_revenue()
+    coins_spent = (await db.fetchone(
+        "SELECT COALESCE(SUM(-delta), 0) AS s FROM balances WHERE delta < 0"
+    ))["s"]
+
+    text = T["admin_dashboard"].format(
+        total_users=total_users,
+        active_7d=active_7d,
+        today_signups=today_signups,
+        premium_count=premium_count,
+        searches_total=searches_total,
+        today_searches=today_searches,
+        coins_spent=round(coins_spent, 2),
+        today_revenue=f"{today_revenue:,}".replace(",", " "),
+        total_revenue=f"{total_revenue:,}".replace(",", " "),
+        pending=pending_pay,
+    )
+    return text, pending_pay
+
+
+async def _send_panel(message: Message) -> None:
+    text, pending = await _build_dashboard()
+    await message.answer(text, reply_markup=admin_reply_kb(pending_payments=pending))
+
+
+# ---------- login ----------
+
 @router.message(Command("admin_kirish"))
 async def cmd_admin_login(message: Message, state: FSMContext) -> None:
     if not _is_admin(message.from_user.id):
         await message.answer(T["admin_not_allowed"])
         await AdminLogsRepo.log(message.from_user.id, "login_attempt_not_admin", success=False)
         return
+
+    if AdminSessions.is_valid(message.from_user.id):
+        await _send_panel(message)
+        return
+
     await state.set_state(AdminLoginSG.password)
     await message.answer(T["admin_password_prompt"])
 
@@ -39,11 +96,15 @@ async def check_password(message: Message, state: FSMContext) -> None:
         return
     pwd = (message.text or "").strip()
     try:
-        await message.delete()  # remove the password from chat
+        await message.delete()
     except Exception:
         pass
 
-    ok = verify_password(pwd, settings.admin_password_hash)
+    ok = verify_admin(
+        pwd,
+        hashed=settings.admin_password_hash,
+        plaintext=settings.admin_password,
+    )
     if not ok:
         await AdminLogsRepo.log(message.from_user.id, "login_wrong_password", success=False)
         logger.warning("admin.login.wrong", extra={"admin_id": message.from_user.id})
@@ -53,18 +114,53 @@ async def check_password(message: Message, state: FSMContext) -> None:
     AdminSessions.create(message.from_user.id)
     await AdminLogsRepo.log(message.from_user.id, "login_ok", success=True)
     await state.clear()
-    await message.answer(
-        f"{T['admin_login_ok']}\n\n{T['admin_panel_title']}",
-        reply_markup=admin_main_kb(),
-    )
+    await message.answer(T["admin_login_ok"])
+    await _send_panel(message)
 
+
+@router.message(Command("admin_menu"))
+async def cmd_admin_menu(message: Message) -> None:
+    if not AdminSessions.is_valid(message.from_user.id):
+        await message.answer(T["admin_session_expired"])
+        return
+    await _send_panel(message)
+
+
+# ---------- legacy inline panel callbacks (still used by 🏠 home buttons) ----
 
 @router.callback_query(F.data == "adm:home")
 async def adm_home(cb: CallbackQuery) -> None:
     if not AdminSessions.is_valid(cb.from_user.id):
         await cb.answer(T["admin_session_expired"], show_alert=True)
         return
-    await cb.message.edit_text(T["admin_panel_title"], reply_markup=admin_main_kb())
+    text, pending = await _build_dashboard()
+    try:
+        await cb.message.edit_text(text)
+    except Exception:
+        pass
+    # Re-assert reply keyboard in case it was lost
+    await cb.message.answer("🏠", reply_markup=admin_reply_kb(pending_payments=pending))
+    await cb.answer()
+
+
+@router.callback_query(F.data == "adm:logout")
+async def adm_logout(cb: CallbackQuery) -> None:
+    AdminSessions.revoke(cb.from_user.id)
+    await AdminLogsRepo.log(cb.from_user.id, "logout", success=True)
+    try:
+        await cb.message.edit_text(T["admin_logged_out"])
+    except Exception:
+        pass
+    await cb.message.answer("👋", reply_markup=remove_kb())
+    await cb.answer("👋 Chiqildi.")
+
+
+@router.callback_query(F.data == "adm:cancel_plan")
+async def cancel_plan(cb: CallbackQuery) -> None:
+    try:
+        await cb.message.delete()
+    except Exception:
+        pass
     await cb.answer()
 
 

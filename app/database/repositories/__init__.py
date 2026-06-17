@@ -6,8 +6,11 @@ from app.database.repositories.subscriptions import SubscriptionsRepo
 from app.database.repositories.bonus_channels import BonusRepo
 from app.database.repositories.admin_logs import AdminLogsRepo
 from app.database.repositories.blocks import BlocksRepo
+from app.database.repositories.coin_purchases import CoinPurchasesRepo
+from app.database.repositories.app_settings import AppSettingsRepo
 
 __all__ = [
     "UsersRepo", "JobsRepo", "SearchesRepo", "ReferralsRepo",
     "SubscriptionsRepo", "BonusRepo", "AdminLogsRepo", "BlocksRepo",
+    "CoinPurchasesRepo", "AppSettingsRepo",
 ]

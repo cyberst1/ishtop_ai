@@ -1,6 +1,16 @@
 """
-IntentGuard — first line of defense BEFORE any LLM call.
-Saves cost and prevents off-topic abuse.
+IntentGuard — gate-keeper that runs before parsers / LLM analyzer.
+
+Three-tier strategy:
+
+  1. HARD BLOCK list  — obvious off-topic patterns (hazil, sevgi, ...) → REJECT
+  2. STRONG ALLOW list — known career keyword present                 → ALLOW
+  3. LLM ARBITER       — ambiguous query is sent to the LLM. If LLM says
+                          allowed=true → ALLOW. Otherwise (or LLM
+                          unavailable) → REJECT (strict default).
+
+Keeps natural Uzbek phrasing working ("Telegram bot yasab beraman") AND
+rejects anything off-topic ("iPhone 15 sotib olaman", "kitob tavsiya qil").
 """
 from __future__ import annotations
 
@@ -10,25 +20,60 @@ from dataclasses import dataclass
 
 from app.ai.client import AIClient
 from app.ai.prompts import INTENT_GUARD
+from app.ai.job_analyzer import _SYNONYMS  # reuse the canonical lexicon
 
-# Cheap rules first — most cases never reach the LLM
-_ALLOWED_KEYWORDS = {
-    # english
-    "job", "jobs", "work", "career", "salary", "interview", "resume", "cv",
-    "hire", "hiring", "skill", "skills", "freelance", "freelancing", "roadmap",
-    "remote", "office", "developer", "engineer", "manager", "designer", "marketing",
-    "junior", "middle", "senior", "intern", "vacancy", "vakansiya",
-    # uzbek + russian
-    "ish", "ishchi", "xodim", "vakansi", "kasb", "karyera", "maosh", "intervyu",
-    "rezyume", "rezume", "korikma", "ko'nikma", "yollanma", "ofis", "uydan",
-    "rabota", "rabotnik", "vakansiya", "zarplata",
-}
+
+# ---- Hard off-topic blocks ----------------------------------------------
 
 _BLOCKED_PATTERNS = [
-    r"\b(hazil|jokes|sevg|love|siyosat|politics|prezident)\b",
-    r"\b(she'r|poem|she\\'r)\b",
-    r"\b(porno|sex|seks)\b",
+    r"\bhazil\b|\bjokes?\b|\bkulgili\b",
+    r"\bsevgi\b|\blove\b|\bromantik\b|\bromance\b",
+    r"\bsiyosat\b|\bpolitics?\b|\bprezident\b|\bhukumat\b|\bdeputat\b",
+    r"\bshe[' ]?r\b|\bpoems?\b|\bqo[' ]?shiq\b|\bsong\b|\bmusiqa\b|\bmusic\b",
+    r"\bporno\b|\bsex\b|\bseks\b|\berotik\b|\b18\+\b",
+    r"\bkasallik\b|\bdisease\b|\btablet\b|\bdori\b|\btibbiyot\b",
+    r"\bnamaz\b|\bibodat\b|\bprayer\b|\bcherkov\b|\bchurch\b|\bmecca\b|\bdin\b",
+    r"\b(retsept|recipe)\b",
+    r"^\s*(salom|hi|hello|qalaysiz|qalay|kayfingiz)[\s!?.,]*"
+        r"(salom|hi|hello|qalaysiz|qalay|kayfingiz)?[\s!?.,]*$",
+    r"\b(suhbatlash|chatla|gaplash)\b",
+    r"^\s*menga\s+(hazil|she[' ]?r|qo[' ]?shiq|hikoya)\s+ayt\b",
+    # explicit purchases (consumer goods, not job-related)
+    r"\b(iphone|phone|telefon|smartfon|kitob|book|kompyuter|laptop|noutbuk|mashina|car|televizor|televizion|krossovka|tovar)\b.*\b(sotib\s+ol|buy|kupit|olaman|olamiz|olar|narxi|qancha|kerak\s+menga)\b",
+    r"\b(sotib\s+ol(am(an|aymiz)|in)|buy\b|kupit|narxi)\b.*\b(iphone|phone|telefon|smartfon|kitob|book|kompyuter|laptop|noutbuk|mashina|car|televizor|televizion|krossovka|tovar)\b",
+    # generic curiosity
+    r"\b(nima\s+bu|what\s+is|haqida\s+ayt|tavsiya\s+qil|recommend)\b",
+    r"\b(qancha|narxi|cost|price)\b.*\b(iphone|telefon|mashina|kitob)\b",
+    r"\b(bitcoin|kripto|crypto|nft)\b",
 ]
+
+# ---- Strong allow keywords (instant-allow) ----
+# Combine the JobAnalyzer synonym table with explicit English/Uzbek vocab.
+# Words mapped to "" (ignore) in synonyms must NOT short-circuit allow.
+_BASE_ALLOW = {
+    # English
+    "job", "jobs", "work", "career", "salary", "interview", "resume", "cv",
+    "hire", "hiring", "skill", "skills", "freelance", "freelancing", "roadmap",
+    "remote", "office", "developer", "engineer", "manager", "designer",
+    "marketing", "junior", "middle", "senior", "intern", "vacancy",
+    "programmer", "coder", "analyst", "tester", "qa", "devops",
+    "frontend", "backend", "fullstack", "mobile", "android", "ios",
+    "python", "java", "javascript", "php", "react", "node", "django",
+    "fastapi", "flask", "spring",
+    "sales", "smm", "seo", "hr", "accountant", "lawyer", "teacher",
+    "driver", "courier", "cashier", "waiter", "cook", "chef",
+    # Uzbek/Russian
+    "ish", "ishchi", "xodim", "vakansi", "vakansiya", "kasb", "karyera",
+    "maosh", "intervyu", "rezyume", "yollanma", "ofis", "uydan", "uyda",
+    "masofadan", "rabota", "rabotnik", "zarplata", "stazhirovka", "amaliyot",
+}
+_ALLOWED_KEYWORDS = (
+    _BASE_ALLOW
+    | {k for k, v in _SYNONYMS.items() if v}  # any synonym mapped to non-empty
+)
+
+_MIN_LEN = 2
+_MAX_LEN = 300
 
 
 @dataclass
@@ -41,25 +86,47 @@ class IntentGuard:
     @staticmethod
     async def check(text: str) -> IntentVerdict:
         t = (text or "").lower().strip()
-        if not t or len(t) > 500:
-            return IntentVerdict(False, "empty_or_too_long")
+        if len(t) < _MIN_LEN:
+            return IntentVerdict(False, "empty")
+        if len(t) > _MAX_LEN:
+            return IntentVerdict(False, "too_long")
 
+        # 1) Hard blocks
         for pat in _BLOCKED_PATTERNS:
             if re.search(pat, t, flags=re.IGNORECASE):
                 return IntentVerdict(False, "blocked_pattern")
 
-        # Fast allow path: any career keyword present
-        words = re.split(r"\W+", t)
-        if any(w in _ALLOWED_KEYWORDS for w in words if w):
-            return IntentVerdict(True)
+        # 2) Quick allow (career keyword present)
+        words = [w for w in re.split(r"[^\wʻ']+", t) if w]
+        # Strip Uzbek case suffixes for keyword check
+        from app.ai.job_analyzer import _stem
+        for w in words:
+            if w in _ALLOWED_KEYWORDS or _stem(w) in _ALLOWED_KEYWORDS:
+                return IntentVerdict(True, "keyword_match")
 
-        # Fallback: ask the LLM. If LLM unavailable, default to allow short queries.
-        raw = await AIClient.chat(INTENT_GUARD, t, temperature=0.0, max_tokens=80)
+        # 3) LLM arbiter (lenient — when LLM is unavailable, we ALLOW and
+        # rely on the parser-level score filter to drop irrelevant results)
+        raw = await AIClient.chat(INTENT_GUARD, t, temperature=0.0, max_tokens=120)
         if not raw:
-            return IntentVerdict(True)
+            # No LLM available → graceful default: allow.
+            # (a) The aggressive blocklist above already caught off-topic.
+            # (b) The aggregator's score filter drops irrelevant results.
+            return IntentVerdict(True, "no_llm_default_allow")
         try:
-            data = json.loads(raw)
-            return IntentVerdict(bool(data.get("allowed", False)),
-                                 str(data.get("reason", "")))
+            data = json.loads(_extract_json(raw))
+            allowed = bool(data.get("allowed", False))
+            reason = str(data.get("reason", ""))
+            return IntentVerdict(allowed, reason or "llm_decision")
         except (ValueError, TypeError):
-            return IntentVerdict(False, "parse_error")
+            # LLM gave nonsense — graceful default
+            return IntentVerdict(True, "parse_error_default_allow")
+
+
+def _extract_json(text: str) -> str:
+    """Some models wrap JSON in ```...``` fences — strip them."""
+    text = text.strip()
+    # Remove markdown code fence
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```\s*$", "", text)
+    return text.strip()

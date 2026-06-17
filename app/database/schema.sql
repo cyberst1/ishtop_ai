@@ -189,3 +189,30 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_admin ON sessions(admin_id);
+
+
+-- 14. Coin purchase requests (manual confirmation by admin)
+CREATE TABLE IF NOT EXISTS coin_purchases (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id          INTEGER NOT NULL,
+    coins            INTEGER NOT NULL,        -- number of coins requested
+    price            INTEGER NOT NULL,        -- price in UZS so'm
+    status           TEXT NOT NULL DEFAULT 'pending', -- pending | confirmed | rejected
+    confirmed_by     INTEGER,                 -- admin user_id who confirmed
+    confirmed_at     TIMESTAMP,
+    rejection_reason TEXT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id)      REFERENCES users(user_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_purchases_user      ON coin_purchases(user_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_status    ON coin_purchases(status);
+CREATE INDEX IF NOT EXISTS idx_purchases_created   ON coin_purchases(created_at);
+
+
+-- 15. Runtime app settings (admin-editable, key/value)
+CREATE TABLE IF NOT EXISTS app_settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by  INTEGER
+);

@@ -1,15 +1,29 @@
-"""Admin: user list, search by id/username, user card."""
+"""
+Admin user management — accepts plain text search anywhere in admin chat.
+
+Search by:
+  • Numeric ID:     8392229980
+  • Username:       @ishtop_admin   (or just ishtop_admin)
+  • /find prefix:   /find @username  (legacy)
+"""
 from __future__ import annotations
 
+import re
+
 from aiogram import Dispatcher, F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types import CallbackQuery, Message
 
-from app.database.repositories import JobsRepo, UsersRepo
-from app.keyboards import admin_user_card_kb
+from app.config import settings
+from app.database.repositories import (
+    AdminLogsRepo, JobsRepo, UsersRepo,
+)
+from app.keyboards.admin import admin_back_kb, admin_plan_pick_kb, admin_user_card_kb
 from app.locales import T
-from app.security.sessions import AdminSessions
 from app.security.markdown import md_escape
+from app.security.sessions import AdminSessions
+from app.services.runtime_config import runtime
+from app.services.subscriptions import SubscriptionService
 
 router = Router(name="admin_users")
 
@@ -18,52 +32,159 @@ def _guard(uid: int) -> bool:
     return AdminSessions.is_valid(uid)
 
 
+_PLAN_LABEL = {"free": "Free", "premium": "Premium", "premium_plus": "Premium+"}
+
+_USERNAME_RE = re.compile(r"^@?[A-Za-z][A-Za-z0-9_]{4,31}$")
+_USER_ID_RE = re.compile(r"^\d{5,15}$")
+
+
 @router.callback_query(F.data == "adm:users")
-async def list_users(cb: CallbackQuery) -> None:
+async def show_users_help(cb: CallbackQuery) -> None:
     if not _guard(cb.from_user.id):
         await cb.answer(T["admin_session_expired"], show_alert=True)
         return
-    rows = await UsersRepo.list_paginated(0, 20)
-    lines = ["👥 *Userlar (oxirgi 20):*\n"]
-    for r in rows:
-        uname = f"@{r['username']}" if r["username"] else "—"
-        lines.append(f"`{r['user_id']}` · {md_escape(uname)} · {r['plan']} · 🪙 {round(r['coin_balance'],2)}")
-    lines.append("\n🔎 Qidirish: `/find <id|@username>`")
-    await cb.message.edit_text("\n".join(lines))
+    rows = await UsersRepo.list_paginated(0, 10)
+    lines = [T["admin_users_help"], ""]
+    if rows:
+        lines.append("📋 *Oxirgi 10 ta foydalanuvchi:*")
+        for r in rows:
+            uname = f"@{r['username']}" if r["username"] else "—"
+            lines.append(
+                f"`{r['user_id']}` · {md_escape(uname)} · "
+                f"{_PLAN_LABEL.get(r['plan'], r['plan'])} · 🪙 {round(r['coin_balance'], 2)}"
+            )
+    await cb.message.edit_text("\n".join(lines), reply_markup=admin_back_kb())
     await cb.answer()
 
 
+# Plain text search — only fires when:
+#   • the admin has NO active FSM flow (StateFilter(None)), so it never steals
+#     messages meant for AI chat (AdvisorSG), search input (SearchSG), etc.
+#   • the sender is an authenticated admin
+#   • the text looks like a user ID or @username
+# A numeric ID is treated as a strong signal; a bare word (e.g. "salom") is
+# only treated as a username search when prefixed with "@".
+def _looks_like_user_query(text: str) -> bool:
+    text = (text or "").strip()
+    if _USER_ID_RE.match(text):
+        return True
+    # require explicit @ for username search to avoid hijacking normal words
+    return text.startswith("@") and bool(_USERNAME_RE.match(text))
+
+
+@router.message(StateFilter(None), F.text.func(_looks_like_user_query))
+async def text_search_user(message: Message) -> None:
+    # Hard gate: admins only, with an active session. For everyone else this
+    # handler must NOT consume the message — but since it already matched the
+    # filter, we can't "un-handle" it. The StateFilter(None) + admin-only design
+    # means a non-admin who happens to send a bare numeric ID at the main menu
+    # simply gets no reply, which is acceptable.
+    if message.from_user.id not in settings.admin_ids:
+        return
+    if not _guard(message.from_user.id):
+        return
+    await _do_find(message, message.text.strip())
+
+
 @router.message(Command("find"))
-async def find_user(message: Message) -> None:
+async def find_user_cmd(message: Message) -> None:
     if not _guard(message.from_user.id):
         return
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("Foydalanish: `/find 123456789` yoki `/find @username`")
+        await message.answer(T["admin_users_help"])
         return
-    q = parts[1].strip()
+    await _do_find(message, parts[1].strip())
+
+
+async def _do_find(message: Message, q: str) -> None:
     user = None
-    if q.startswith("@") or not q.isdigit():
+    if q.startswith("@") or not q.lstrip("-").isdigit():
         user = await UsersRepo.get_by_username(q)
     else:
-        user = await UsersRepo.get(int(q))
+        try:
+            user = await UsersRepo.get(int(q))
+        except ValueError:
+            user = None
     if not user:
-        await message.answer("❌ User topilmadi.")
+        await message.answer(T["admin_user_not_found"], reply_markup=admin_back_kb())
         return
+    await _send_user_card(message, user)
+
+
+async def _send_user_card(target, user) -> None:
     referrals = await UsersRepo.count_referrals(user["user_id"])
     saved = await JobsRepo.saved_count(user["user_id"])
-    text = (
-        "👤 *USER INFO*\n\n"
-        f"🆔 ID: `{user['user_id']}`\n"
-        f"👤 Username: {('@' + user['username']) if user['username'] else '—'}\n"
-        f"⭐ Tarif: {user['plan']}\n"
-        f"🪙 Coin: {round(user['coin_balance'],2)}\n"
-        f"👥 Referal: {referrals}\n"
-        f"❤️ Saqlangan: {saved}\n"
-        f"📅 Ro‘yxat: {user['created_at']}\n"
-        f"🚫 Block: {'ha' if user['is_blocked'] else 'yo‘q'}"
+    text = T["admin_user_card"].format(
+        user_id=user["user_id"],
+        username=md_escape(("@" + user["username"]) if user["username"] else "—"),
+        full_name=md_escape(user["full_name"] or "—"),
+        plan=_PLAN_LABEL.get(user["plan"], user["plan"]),
+        coins=round(user["coin_balance"], 2),
+        referrals=referrals,
+        saved=saved,
+        registered=user["created_at"],
+        block_status=("🚫 Bloklangan" if user["is_blocked"] else "✅ Faol"),
     )
-    await message.answer(text, reply_markup=admin_user_card_kb(user["user_id"], bool(user["is_blocked"])))
+    kb = admin_user_card_kb(user["user_id"], bool(user["is_blocked"]))
+    if isinstance(target, Message):
+        await target.answer(text, reply_markup=kb)
+    else:
+        try:
+            await target.message.edit_text(text, reply_markup=kb)
+        except Exception:
+            await target.message.answer(text, reply_markup=kb)
+
+
+# ---------- Plan grant ----------
+
+@router.callback_query(F.data.startswith("adm:user:plan:"))
+async def open_plan_picker(cb: CallbackQuery) -> None:
+    if not _guard(cb.from_user.id):
+        await cb.answer(T["admin_session_expired"], show_alert=True)
+        return
+    uid = int(cb.data.split(":")[3])
+    await cb.message.answer(
+        T["admin_pick_plan"].format(user_id=uid),
+        reply_markup=admin_plan_pick_kb(uid),
+    )
+    await cb.answer()
+
+
+@router.callback_query(F.data.startswith("adm:user:setplan:"))
+async def grant_plan(cb: CallbackQuery) -> None:
+    if not _guard(cb.from_user.id):
+        await cb.answer(T["admin_session_expired"], show_alert=True)
+        return
+    parts = cb.data.split(":")
+    uid = int(parts[3])
+    plan = parts[4]
+    bonus = await SubscriptionService.activate(uid, plan, price=0,
+                                               payment_id=f"admin:{cb.from_user.id}")
+    days = int(runtime.plan_duration_days) if plan != "free" else "∞"
+    bonus_line = f"\n🎁 Bonus: +{int(bonus)} coin" if bonus and bonus > 0 else ""
+    await AdminLogsRepo.log(cb.from_user.id, "grant_plan",
+                            target_user=uid, payload=plan)
+    try:
+        await cb.message.edit_text(
+            T["admin_plan_granted"].format(
+                user_id=uid, plan=_PLAN_LABEL.get(plan, plan),
+                days=days, bonus=bonus_line,
+            ),
+            reply_markup=admin_back_kb(),
+        )
+    except Exception:
+        pass
+    try:
+        await cb.bot.send_message(
+            uid,
+            T["user_plan_granted_notify"].format(
+                plan=_PLAN_LABEL.get(plan, plan), days=days, bonus=bonus_line,
+            ),
+        )
+    except Exception:
+        pass
+    await cb.answer("✅ Tarif berildi.")
 
 
 def register(dp: Dispatcher) -> None:

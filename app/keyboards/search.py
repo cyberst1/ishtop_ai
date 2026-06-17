@@ -10,22 +10,15 @@ def role_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def job_card_kb(job_id: str, locked: bool = False) -> InlineKeyboardMarkup:
-    if locked:
-        return InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=T["btn_job_unlock"], callback_data=f"unlock:{job_id}")],
-            [InlineKeyboardButton(text=T["btn_job_next"], callback_data="job:next")],
-        ])
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text=T["btn_job_details"], callback_data=f"job:details:{job_id}"),
-            InlineKeyboardButton(text=T["btn_job_contact"], callback_data=f"job:contact:{job_id}"),
-        ],
-        [
-            InlineKeyboardButton(text=T["btn_job_save"], callback_data=f"job:save:{job_id}"),
-            InlineKeyboardButton(text=T["btn_job_next"], callback_data="job:next"),
-        ],
+def job_card_kb(job_id: str, *, has_next: bool = True) -> InlineKeyboardMarkup:
+    """Job card actions: Save, Next (if any), New search."""
+    rows = [[InlineKeyboardButton(text=T["btn_job_save"], callback_data=f"job:save:{job_id}")]]
+    if has_next:
+        rows[0].append(InlineKeyboardButton(text=T["btn_job_next"], callback_data="job:next"))
+    rows.append([
+        InlineKeyboardButton(text=T["btn_new_search"], callback_data="search:new"),
     ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def browsing_kb() -> InlineKeyboardMarkup:

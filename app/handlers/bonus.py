@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from aiogram import Dispatcher, F, Router
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.database.repositories import BonusRepo
@@ -12,7 +14,9 @@ router = Router(name="bonus")
 
 
 @router.message(F.text == T["btn_earn"])
-async def show_earn(message: Message) -> None:
+@router.message(Command("earn"))
+async def show_earn(message: Message, state: FSMContext) -> None:
+    await state.clear()
     await message.answer(T["earn_header"], reply_markup=earn_kb())
 
 
@@ -20,7 +24,7 @@ async def show_earn(message: Message) -> None:
 async def show_bonus_channels(cb: CallbackQuery) -> None:
     channels = await BonusRepo.list_enabled()
     if not channels:
-        await cb.message.answer("Hozircha bonus kanallar yo‘q.")
+        await cb.message.answer(T["bonus_no_channels"])
         await cb.answer()
         return
     await cb.message.answer(T["bonus_channels_header"],
